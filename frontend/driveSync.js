@@ -1,4 +1,4 @@
-const CLIENT_ID = '127705182868-hf8bab71quvtjb6nnflu8ab6rjvt36i5.apps.googleusercontent.com'; // Nhớ thay chuỗi Client ID bạn vừa copy vào đây nhé!
+const CLIENT_ID = '750727203253-qtp2iqlu7hrvn38qlr88cfdlrnr44r6l.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
 let tokenClient;

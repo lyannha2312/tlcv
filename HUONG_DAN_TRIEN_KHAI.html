@@ -240,7 +240,7 @@ details.qa .task-body{padding:0 16px 14px;border-top:1px solid var(--line);font-
   <table>
     <tr><th>Kết nối</th><th>Dùng để</th><th>Bạn làm gì</th></tr>
     <tr><td><strong>A. GitHub (kho riêng tư)</strong></td><td>Lưu mã nguồn, có lịch sử sửa đổi, đồng bộ sang máy khác</td><td>Phần 3</td></tr>
-    <tr><td><strong>B. Drive for Desktop (Mirror)</strong></td><td>Lưu <em>file PDF, Word</em> của thư mục <code>ho-so</code> lên Drive, <code>app.py</code> đọc như thư mục thường</td><td>Phần 4</td></tr>
+    <tr><td><strong>B. Drive for Desktop (đồng bộ thư mục D:\ho-so)</strong></td><td>Đẩy <em>file PDF, Word</em> của thư mục <code>ho-so</code> lên Drive, <code>app.py</code> vẫn đọc thư mục thật trên ổ D</td><td>Phần 4</td></tr>
     <tr><td><strong>C. Đăng nhập Google OAuth</strong></td><td>Nút "Lưu lên / Tải từ Drive" trong giao diện web, ghi file <code>QLCV_Cloud_Backup.json</code></td><td>Phần 5</td></tr>
   </table>
   <div class="note">
@@ -254,9 +254,9 @@ details.qa .task-body{padding:0 16px 14px;border-top:1px solid var(--line);font-
   <div class="mock">
     <div class="bar"><i></i><i></i><i></i><span>Máy tính của bạn (localhost:5001)</span></div>
     <div class="body">
-      <div class="row"><span class="field">Trình duyệt</span> → <span class="field">Flask app.py</span> → <span class="field hl">config.json → HOSO_ROOT</span></div>
+      <div class="row"><span class="field">Trình duyệt</span> → <span class="field">Flask app.py</span> → <span class="field hl">config.json → D:/ho-so</span></div>
       <div class="row">↓ ghi/đọc file</div>
-      <div class="row"><span class="field">Thư mục Mirror của Drive for Desktop</span> ⇄ <span class="field">Google Drive (đám mây)</span></div>
+      <div class="row"><span class="field">Drive for Desktop (Folders from your computer)</span> ⇄ <span class="field">Google Drive (đám mây)</span></div>
       <div class="row" style="margin-top:12px">Nút "Lưu lên Drive" (trình duyệt) → <span class="field">QLCV_Cloud_Backup.json</span> → <span class="field">Bản GitHub Pages (chỉ xem)</span></div>
     </div>
   </div>
@@ -286,7 +286,7 @@ python --version</pre></div>
     <li><strong>Có giữ Client ID Google cũ không?</strong>
       Client ID đang nằm ở dòng 1 của <code>driveSync.js</code> (<code>127705182868-…</code>). Nếu bạn vẫn đăng nhập được vào dự án Google Cloud tạo ra nó, <em>giữ lại</em> (xem cảnh báo ở Phần 5.4). Chỉ tạo mới nếu không còn truy cập được.</li>
     <li><strong>Máy nào sẽ chạy Flask?</strong>
-      Chỉ nên có <em>một</em> máy chạy <code>app.py</code> và ghi dữ liệu tại một thời điểm. Drive Mirror đồng bộ file giữa các máy, nhưng không giải quyết xung đột khi hai máy cùng sửa <code>dossiers.json</code>.</li>
+      Chỉ nên có <em>một</em> máy chạy <code>app.py</code> và ghi dữ liệu tại một thời điểm. Drive đồng bộ file, nhưng không giải quyết xung đột khi hai máy cùng sửa <code>dossiers.json</code>.</li>
   </ol>
 </section>
 
@@ -383,57 +383,60 @@ git push -u origin main</pre></div>
 
 <section class="module part" id="p4">
   <div class="mod-eyebrow">Phần 4</div>
-  <h2>Cài Google Drive for Desktop và chuyển thư mục hồ sơ</h2>
-  <p>Đây là "cách A" đã chốt trong README: thư mục <code>ho-so</code> nằm trong thư mục Drive trên máy, <code>app.py</code> đọc/ghi như bình thường, Drive tự đẩy lên đám mây.</p>
+  <h2>Đưa thư mục D:\ho-so lên Google Drive (giữ nguyên tại chỗ)</h2>
+  <p>Đã chọn: <strong>giữ nguyên <code>D:\ho-so</code></strong> và nhờ Drive for Desktop đồng bộ chính thư mục đó (mục <em>Folders from your computer</em>). Không chép, không đổi đường dẫn, không đổi chế độ Stream hiện tại của tài khoản. <code>config.json</code> đã trỏ sẵn tới <code>D:/ho-so</code>.</p>
 
-  <h3>4.1. Cài đặt và đăng nhập</h3>
+  <div class="warn">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
+    <div><p><code>D:\ho-so</code> là dữ liệu đang dùng thật. <strong>Sao lưu trước</strong> khi bật đồng bộ và khi mở Flask lần đầu. Từ lúc bật đồng bộ, mọi thay đổi trong thư mục (kể cả xóa file bằng nút ✕, đổi tên, di chuyển do đổi Lĩnh vực) sẽ được đẩy lên Drive theo.</p></div>
+  </div>
+
+  <h3>4.1. Sao lưu một bản</h3>
+  <div class="code"><span class="lang">PowerShell</span><button data-copy>Sao chép</button><pre>robocopy "D:\ho-so" "D:\LƯU TẠM\ho-so_2026-10-29" /E /COPY:DAT /R:1 /W:1</pre></div>
+  <p>Kết thúc phải thấy số file chép được khớp với số file nguồn (hiện khoảng 452 file).</p>
+
+  <h3>4.2. Thêm thư mục vào Drive for Desktop</h3>
   <ol class="steps">
-    <li><strong>Tải bộ cài</strong> từ trang chính thức <code>google.com/drive/download</code> (mục Drive for desktop), chạy file <code>GoogleDriveSetup.exe</code>.</li>
-    <li><strong>Đăng nhập</strong> bằng đúng tài khoản Google sẽ chứa hồ sơ. Nên dùng cùng tài khoản dùng cho nút "Lưu lên Drive" ở Phần 5 để dễ quản lý.</li>
-    <li><strong>Mở Preferences</strong>: bấm biểu tượng Drive ở khay hệ thống (góc phải thanh tác vụ) → biểu tượng bánh răng → <strong>Preferences</strong>.
+    <li><strong>Mở Preferences</strong>: bấm biểu tượng Drive ở khay hệ thống (góc phải thanh tác vụ) → biểu tượng bánh răng → <strong>Preferences</strong>.</li>
+    <li><strong>Chọn mục "Folders from your computer"</strong> ở menu bên trái, bấm <strong>Add folder</strong>.
       <div class="mock">
         <div class="bar"><i></i><i></i><i></i><span>Google Drive — Preferences</span></div>
         <div class="body">
-          <div class="lbl">My Drive syncing options</div>
-          <div class="radio">Stream files <span style="color:var(--ink-faint)">— tải khi mở, chiếm ít ổ đĩa</span></div>
-          <div class="radio sel hl">Mirror files <span class="tag">CHỌN</span> <span style="color:var(--ink-soft)">— giữ bản đầy đủ trên máy</span></div>
-          <div class="lbl">Folder location</div>
-          <div class="row"><span class="field">D:\GoogleDrive</span> <span class="btn ghost">Thay đổi</span></div>
+          <div class="lbl">Folders from your computer</div>
+          <div class="row"><span class="btn hl">Add folder</span> <span class="tag">BẤM</span></div>
+          <div class="lbl">Chọn thư mục</div>
+          <div class="row"><span class="field hl">D:\ho-so</span></div>
+          <div class="lbl">Sync options</div>
+          <div class="radio sel hl">Sync with Google Drive <span class="tag">CHỌN</span></div>
+          <div class="radio">Back up to Google Photos <span style="color:var(--ink-faint)">— không dùng</span></div>
+          <div class="row" style="margin-top:10px"><span class="btn">Done</span> <span class="btn ghost">Save</span></div>
         </div>
       </div>
-      <p class="cap">Mô phỏng. Bản tiếng Việt có thể ghi "Sao chép tệp" cho Mirror và "Truyền trực tuyến tệp" cho Stream.</p>
+      <p class="cap">Mô phỏng. Tên nút và thứ tự tùy phiên bản; bản tiếng Việt có thể ghi "Thư mục trên máy tính của bạn".</p>
     </li>
-    <li><strong>Chọn Mirror files</strong> (không chọn Stream). Với Stream, file chưa mở sẽ chỉ là "tham chiếu", Flask có thể báo lỗi khi đọc hoặc liệt kê.</li>
-    <li><strong>Chọn vị trí thư mục ngắn</strong>, ví dụ <code>D:\GoogleDrive</code>. Đường dẫn quá dài (Windows giới hạn ~260 ký tự; README đã ghi nhận một đường dẫn 253 ký tự) sẽ gây lỗi, nên gốc càng ngắn càng tốt.</li>
+    <li><strong>Chọn <code>D:\ho-so</code></strong>, chọn <strong>Sync with Google Drive</strong>, bấm <strong>Done</strong> rồi <strong>Save</strong>. Nếu Drive hỏi quyền truy cập thư mục, bấm <strong>Allow</strong>.</li>
+    <li><strong>Chờ đồng bộ</strong>: biểu tượng Drive ở khay hệ thống báo đang tải lên rồi chuyển dấu tích xanh. Lần đầu có thể mất vài phút đến vài chục phút tùy dung lượng.</li>
+    <li><strong>Đối chiếu trên web</strong>: mở <code>drive.google.com</code> → mục <strong>Computers</strong> ở menu trái → tên máy → <code>ho-so</code>. Phải thấy đủ <code>2025</code>, <code>2026</code>, <code>1589_PV01-TMTH</code>, <code>the-thuc-van-ban-Dang</code>.</li>
   </ol>
-
-  <h3>4.2. Chép thư mục hồ sơ sang Drive</h3>
-  <div class="warn">
-    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
-    <div><p>Theo README: <strong>chép</strong> thư mục <code>ho-so</code> sang Drive, không di chuyển, không trỏ thẳng vào thư mục gốc cũ để thử nghiệm. Giữ nguyên bản gốc cho đến khi kiểm tra xong.</p></div>
-  </div>
-  <div class="code"><span class="lang">PowerShell</span><button data-copy>Sao chép</button><pre># Tạo thư mục đích trong Drive
-New-Item -ItemType Directory -Force "D:\GoogleDrive\My Drive\QLCV"
-
-# Chép (robocopy: giữ nguyên cấu trúc, an toàn với tên tiếng Việt)
-robocopy "D:\_QLCV_Merged\backend\static\ho-so" "D:\GoogleDrive\My Drive\QLCV\ho-so" /E /COPY:DAT /R:1 /W:1</pre></div>
-  <p>Kiểm tra: đường dẫn trên là ví dụ. Hãy mở File Explorer, vào thư mục Drive thực tế trên máy bạn và dùng đúng đường dẫn đó (thanh địa chỉ → bấm chuột phải → <em>Copy address as text</em>). Sau đó chờ biểu tượng Drive ở khay hệ thống báo đồng bộ xong (dấu tích xanh) rồi mở <code>drive.google.com</code> trên web kiểm tra thư mục <code>QLCV/ho-so</code> đã có đủ file.</p>
-
-  <h3>4.3. Báo đường dẫn cho Claude</h3>
-  <p>Bước 1 của README sẽ tạo <code>config.json</code> chứa <code>HOSO_ROOT</code> và sửa <code>app.py</code> đọc từ đó. Bạn chỉ cần gửi cho Claude <strong>đường dẫn đầy đủ</strong> tới thư mục <code>ho-so</code> vừa chép, ví dụ:</p>
-  <div class="code"><span class="lang">config.json (dự kiến)</span><button data-copy>Sao chép</button><pre>{
-  "HOSO_ROOT": "D:\\GoogleDrive\\My Drive\\QLCV\\ho-so"
-}</pre></div>
   <div class="note">
     <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
-    <div><p>Trong JSON, mỗi dấu <code>\</code> phải viết thành <code>\\</code>. Hiện <code>app.py</code> vẫn cố định <code>HOSO_ROOT</code> là <code>static/ho-so</code> cạnh file; <code>config.json</code> chưa tồn tại cho đến khi Claude làm bước 1.</p></div>
+    <div><p>Thư mục này hiện trong <em>Computers</em>, <strong>không</strong> nằm trong <em>My Drive</em>. Máy khác muốn dùng thì cũng cài Drive for Desktop cùng tài khoản; nhưng thư mục ở <em>Computers</em> không tự "kéo" xuống máy khác như Mirror. Nếu sau này cần chạy Flask trên máy thứ hai, sẽ phải chuyển sang chế độ Mirror (tải toàn bộ My Drive về máy, cần cân nhắc dung lượng).</p></div>
   </div>
+
+  <h3>4.3. Kiểm tra cấu hình Flask</h3>
+  <p>File <code>backend\config.json</code> (không đưa lên GitHub) đã có:</p>
+  <div class="code"><span class="lang">config.json</span><button data-copy>Sao chép</button><pre>{
+  "HOSO_ROOT": "D:/ho-so"
+}</pre></div>
+  <p>Nếu đường dẫn trong file này sai, <code>app.py</code> sẽ dừng và báo <code>HOSO_ROOT ... khong ton tai</code> thay vì tự tạo thư mục rỗng. Trong JSON có thể viết <code>/</code> hoặc <code>\\</code>.</p>
 
   <h3>4.4. Lưu ý vận hành</h3>
   <ul>
-    <li>Đợi Drive đồng bộ xong rồi mới tắt máy; đồng bộ dở dang có thể để lại file chưa đầy đủ.</li>
-    <li>Không chạy Flask đồng thời trên hai máy cùng trỏ vào một thư mục Drive.</li>
-    <li><code>frontend\server.js</code> (cổng 3001, mở thư mục bằng Explorer) đang tìm trong <code>D:\</code>; nếu Drive nằm ổ khác, cần sửa <code>SEARCH_ROOTS</code>.</li>
+    <li>Đợi Drive đồng bộ xong (dấu tích xanh) rồi mới tắt máy.</li>
+    <li>Chưa nên Sửa/Xóa hồ sơ trên giao diện cho đến khi gộp xong <code>dossiers.json</code> (bước 2, 3 của README); danh mục hiện chép từ ngày 24/10 và có thể lệch với <code>D:\ho-so</code>.</li>
+    <li>Xóa nhầm trên máy: file được đưa vào thùng rác Drive, khôi phục được trong 30 ngày (theo quy định của Google, có thể thay đổi).</li>
+    <li>Đường dẫn dài nhất trong <code>D:\ho-so</code> là 224 ký tự (giới hạn Windows ~260). Đừng bọc thêm nhiều lớp thư mục bên ngoài.</li>
+    <li><code>frontend\server.js</code> tìm thư mục trong <code>D:\</code>, nên vẫn dùng được, không cần sửa.</li>
   </ul>
 </section>
 
@@ -559,9 +562,9 @@ cd D:\_QLCV_Merged\backend
     <li><label><input type="checkbox"><span>Có <code>.gitignore</code> trước khi <code>git add .</code></span></label></li>
     <li><label><input type="checkbox"><span><code>git ls-files | Select-String "ho-so|dossiers|backups"</code> không in ra gì</span></label></li>
     <li><label><input type="checkbox"><span>Đã <code>git push -u origin main</code>, kiểm tra trên GitHub không có thư mục <code>ho-so</code></span></label></li>
-    <li><label><input type="checkbox"><span>Cài Drive for Desktop, chọn <strong>Mirror files</strong>, thư mục gốc đường dẫn ngắn</span></label></li>
-    <li><label><input type="checkbox"><span>Chép (không di chuyển) <code>ho-so</code> sang Drive, đợi đồng bộ xong và đối chiếu trên drive.google.com</span></label></li>
-    <li><label><input type="checkbox"><span>Gửi Claude đường dẫn <code>HOSO_ROOT</code> để tạo <code>config.json</code></span></label></li>
+    <li><label><input type="checkbox"><span>Sao lưu <code>D:\ho-so</code>, rồi thêm vào Drive: <em>Folders from your computer</em> → Sync with Google Drive</span></label></li>
+    <li><label><input type="checkbox"><span>Đợi đồng bộ xong, đối chiếu mục Computers trên drive.google.com</span></label></li>
+    <li><label><input type="checkbox"><span><code>backend\config.json</code> trỏ tới <code>D:/ho-so</code> (đã tạo)</span></label></li>
     <li><label><input type="checkbox"><span>Drive API đã Enable; màn hình đồng ý ở External, có Test user hoặc đã Publish</span></label></li>
     <li><label><input type="checkbox"><span>Đã thêm 3 origin (5001, 5173, github.io) và Save</span></label></li>
     <li><label><input type="checkbox"><span>Nếu tạo Client ID mới: đã Xuất JSON từ bản cũ và dán Client ID mới vào <code>driveSync.js</code></span></label></li>
@@ -573,7 +576,7 @@ cd D:\_QLCV_Merged\backend
   <table>
     <tr><th>Bạn tự làm (cần tài khoản)</th><th>Claude làm trong mã</th></tr>
     <tr><td>Tạo kho GitHub, đăng nhập khi <code>git push</code></td><td>Tạo <code>.gitignore</code>, đổi <code>package.json</code> nếu đổi tài khoản</td></tr>
-    <tr><td>Cài Drive for Desktop, chọn Mirror, chép <code>ho-so</code></td><td>Tạo <code>config.json</code>, sửa <code>app.py</code> đọc <code>HOSO_ROOT</code></td></tr>
+    <tr><td>Sao lưu và thêm <code>D:\ho-so</code> vào Drive for Desktop</td><td>Tạo <code>config.json</code>, sửa <code>app.py</code> đọc <code>HOSO_ROOT</code></td></tr>
     <tr><td>Thao tác trên Google Cloud Console</td><td>Dán Client ID, tách chế độ build (Pages / Flask)</td></tr>
     <tr><td>Chọn bản đúng cho 9 hồ sơ lệch nhau</td><td>Script liệt kê 9 hồ sơ lệch, giao diện gộp, dọn lỗi</td></tr>
   </table>

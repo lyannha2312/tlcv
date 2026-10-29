@@ -14,6 +14,7 @@ Chạy:     python app.py     (hoặc bấm đúp Mo_KhoHoSo.bat)
 Mở web:   http://localhost:5001
 """
 
+import json
 import os
 import shutil
 import threading
@@ -28,27 +29,50 @@ app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCEL_PATH = os.path.join(BASE_DIR, "Danh_Muc_Ho_So.xlsx")
-# Tự động đổi tên thư mục từ ho_so sang ho-so nếu có
-old_hoso_root = os.path.join(BASE_DIR, "static", "ho_so")
-new_hoso_root = os.path.join(BASE_DIR, "static", "ho-so")
-HOSO_ROOT = new_hoso_root
 
-if os.path.isdir(old_hoso_root):
-    if not os.path.exists(new_hoso_root):
-        try:
-            os.rename(old_hoso_root, new_hoso_root)
-            print("Da doi ten thu muc static/ho_so thanh static/ho-so thanh cong.")
-        except Exception as e:
-            print(f"Loi khi doi ten thu muc static/ho_so sang static/ho-so: {e}")
-            print("He thong se tiep tuc su dung thu muc ho_so cu.")
-            HOSO_ROOT = old_hoso_root
-    else:
-        HOSO_ROOT = new_hoso_root
+# Cấu hình riêng của từng máy (không đưa lên GitHub) - xem config.example.json.
+# HOSO_ROOT: thư mục gốc chứa hồ sơ (vd. thư mục nằm trong Google Drive).
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+
+
+def load_config():
+    if not os.path.exists(CONFIG_PATH):
+        return {}
+    with open(CONFIG_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+CONFIG = load_config()
+
+if CONFIG.get("HOSO_ROOT"):
+    HOSO_ROOT = os.path.normpath(CONFIG["HOSO_ROOT"])
+    if not os.path.isdir(HOSO_ROOT):
+        # Không tự tạo: đường dẫn gõ sai sẽ sinh ra một thư mục hồ sơ rỗng ở sai chỗ.
+        raise SystemExit(f"[LOI] HOSO_ROOT trong config.json khong ton tai: {HOSO_ROOT}")
+    # URL xem file luon la /static/ho-so/... (route serve_pdf), khong phu thuoc ten thu muc that.
+    HOSO_FOLDER_NAME = "ho-so"
 else:
+    # Tự động đổi tên thư mục từ ho_so sang ho-so nếu có
+    old_hoso_root = os.path.join(BASE_DIR, "static", "ho_so")
+    new_hoso_root = os.path.join(BASE_DIR, "static", "ho-so")
     HOSO_ROOT = new_hoso_root
 
-os.makedirs(HOSO_ROOT, exist_ok=True)
-HOSO_FOLDER_NAME = os.path.basename(HOSO_ROOT)
+    if os.path.isdir(old_hoso_root):
+        if not os.path.exists(new_hoso_root):
+            try:
+                os.rename(old_hoso_root, new_hoso_root)
+                print("Da doi ten thu muc static/ho_so thanh static/ho-so thanh cong.")
+            except Exception as e:
+                print(f"Loi khi doi ten thu muc static/ho_so sang static/ho-so: {e}")
+                print("He thong se tiep tuc su dung thu muc ho_so cu.")
+                HOSO_ROOT = old_hoso_root
+        else:
+            HOSO_ROOT = new_hoso_root
+    else:
+        HOSO_ROOT = new_hoso_root
+
+    os.makedirs(HOSO_ROOT, exist_ok=True)
+    HOSO_FOLDER_NAME = os.path.basename(HOSO_ROOT)
 
 PORT = 5001
 

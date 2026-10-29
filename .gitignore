@@ -16,3 +16,6 @@ node_modules/
 dist/
 __pycache__/
 *.pyc
+
+# Khoá OAuth tải từ Google Cloud — tuyệt đối không commit
+client_secret*.json
