@@ -1,0 +1,21 @@
+# Dữ liệu và hồ sơ nội bộ — KHÔNG đưa lên GitHub
+backend/static/ho-so/
+backend/static/ho_so/
+backend/backups/
+backend/dossiers.json
+backend/Danh_Muc_Ho_So.xlsx
+backend/Backup_QLCV_*.json
+frontend/data/
+config.json
+data.json
+
+# Môi trường và sản phẩm build
+venv/
+test_venv/
+node_modules/
+dist/
+__pycache__/
+*.pyc
+
+# Khoá OAuth tải từ Google Cloud — tuyệt đối không commit
+client_secret*.json
