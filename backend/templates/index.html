@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hồ sơ công việc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inter.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/quill.snow.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+
+<body>
+
+  <header>
+    <div class="title-wrap">
+      <div class="brand-icon"><i class="fa-solid fa-folder-closed"></i></div>
+      <div class="title-text">
+        <h1>Hồ sơ công việc</h1>
+        <p class="stats-line" id="statsLine">Đang tải...</p>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn btn-secondary" onclick="openRootFolder()" title="Mở thư mục gốc chứa toàn bộ các hồ sơ"><i
+          class="fa-solid fa-folder-open"></i> Mở kho hồ sơ</button>
+      <button class="btn btn-secondary" onclick="exportJson()"><i class="fa-solid fa-file-export"></i> Xuất
+        JSON</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('importInput').click()"><i
+          class="fa-solid fa-file-import"></i> Nhập JSON</button>
+      <input type="file" id="importInput" accept=".json" style="display:none" onchange="importJson(event)">
+      <button class="btn btn-primary" onclick="openForm()"><i class="fa-solid fa-plus"></i> Thêm hồ sơ</button>
+    </div>
+  </header>
+
+  <input type="file" id="pdfUploadInput"
+    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.rtf,.zip,.rar" multiple
+    style="display:none" onchange="onPdfInputChange(event)">
+
+  <div class="main-layout">
+
+    <!-- Cột 1: danh sách hồ sơ -->
+    <aside class="list-panel" id="listPanel">
+      <button type="button" class="panel-toggle" id="listPanelToggle" onclick="togglePanel('list')" title="Thu gọn"><i
+          class="fa-solid fa-chevron-left"></i></button>
+      <div class="list-toolbar">
+        <div class="search-wrap">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="searchBox" placeholder="Tìm hồ sơ..." oninput="renderList()">
+        </div>
+        <div class="filter-toggle-row">
+          <select id="filterTrangThai" onchange="renderList()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Đang xử lý" selected>Đang xử lý</option>
+            <option value="Đã hoàn thành">Đã hoàn thành</option>
+          </select>
+          <div class="view-toggle-buttons">
+            <button class="toggle-btn active" onclick="setViewMode('cards')" id="btnViewCards" title="Xem dạng thẻ"><i
+                class="fa-solid fa-table-cells-large"></i></button>
+            <button class="toggle-btn" onclick="setViewMode('tree')" id="btnViewTree" title="Xem dạng cây"><i
+                class="fa-solid fa-folder-tree"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="tree" id="treeRoot" style="display:none"></div>
+      <div class="cards-container" id="cardsRoot"></div>
+    </aside>
+
+    <!-- Cột 2: xem trước PDF -->
+    <section class="preview-panel" id="previewPanel">
+      <div class="empty-state">
+        <i class="fa-solid fa-folder-open"></i>
+        <p>Chọn một hồ sơ bên trái để xem chi tiết và tài liệu</p>
+      </div>
+    </section>
+
+    <!-- Cột 3: timeline văn bản -->
+    <aside class="timeline-panel" id="timelinePanel">
+      <button type="button" class="panel-toggle" id="timelinePanelToggle" onclick="togglePanel('timeline')"
+        title="Thu gọn"><i class="fa-solid fa-chevron-right"></i></button>
+      <div class="timeline-scroll-container">
+        <div class="record-header" id="recordHeader" style="display:none"></div>
+        <div class="timeline-body" id="timelineBody">
+          <div class="timeline-empty">
+            <i class="fa-solid fa-timeline" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px;"></i>
+            <p>Chọn một hồ sơ để xem timeline</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Modal thêm/sửa -->
+  <div class="overlay" id="formOverlay">
+    <div class="modal">
+      <h2 id="formTitle">Thêm hồ sơ</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>Tên thư mục hồ sơ (khớp với thư mục PDF trên đĩa) *</label>
+          <input id="f_key" placeholder="VD: 2026-06-05_1764-H05-P6_nen-tang-tro-ly-thong-minh">
+        </div>
+        <div class="full">
+          <label>Tiêu đề công việc *</label>
+          <input id="f_title">
+        </div>
+        <div>
+          <label>Lĩnh vực</label>
+          <select id="f_linhvuc"></select>
+        </div>
+        <div>
+          <label>Trạng thái</label>
+          <select id="f_trangthai"></select>
+        </div>
+        <div>
+          <label>Số hiệu VB đến</label>
+          <input id="f_sohieu">
+        </div>
+        <div>
+          <label>Ngày VB đến</label>
+          <input id="f_ngayvbden" type="date">
+        </div>
+        <div class="full">
+          <label>Nơi gửi</label>
+          <input id="f_noigui">
+        </div>
+        <div class="full">
+          <label>Trích yếu VB đến</label>
+          <textarea id="f_trichyeu"></textarea>
+        </div>
+        <div class="full">
+          <label>Kết quả xử lý / VB tham mưu</label>
+          <textarea id="f_ketqua"></textarea>
+        </div>
+        <div>
+          <label>Ngày tạo hồ sơ</label>
+          <input id="f_ngaytao" type="date">
+        </div>
+        <div>
+          <label>Hạn xử lý</label>
+          <input id="f_hanxuly" type="date">
+        </div>
+        <div class="full">
+          <label>Ghi chú</label>
+          <div id="editor-container" style="height: 200px;"></div>
+          <input type="hidden" id="f_ghichu">
+        </div>
+      </div>
+      <div class="modal-error" id="formError"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeForm()">Hủy</button>
+        <button class="btn btn-primary" onclick="submitForm()">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Timeline Chi Tiết -->
+  <div class="overlay" id="timelineOverlay">
+    <div class="modal timeline-modal">
+      <div class="modal-header">
+        <h2 id="timelineModalTitle">Timeline Chi Tiết</h2>
+        <button class="close-modal-btn" onclick="closeTimelineModal()">&times;</button>
+      </div>
+      <div class="timeline-detail-container" id="timelineDetailContainer">
+        <!-- Dữ liệu timeline sẽ được render bằng JS -->
+      </div>
+    </div>
+  </div>
+
+  <script id="init-data" type="application/json">
+{
+  "LINH_VUC_OPTIONS": {{ linh_vuc_options | tojson }},
+  "TRANG_THAI_OPTIONS": {{ trang_thai_options | tojson }},
+  "CATEGORIES": {{ categories | tojson }}
+}
+</script>
+
+  <script src="{{ url_for('static', filename='js/quill.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tổng quan cấu trúc dự án QLCV</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            background-color: #f9fafb;
+        }
+        h1, h2, h3 {
+            color: #111827;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
+        h1 {
+            font-size: 2.25rem;
+        }
+        h2 {
+            font-size: 1.5rem;
+            margin-top: 2.5rem;
+        }
+        h3 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            border-bottom: none;
+        }
+        code {
+            background-color: #e5e7eb;
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            border-radius: 6px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        strong {
+            color: #4f46e5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tổng quan cấu trúc dự án <code>_QLCV</code></h1>
+        <p>Đây là một dự án ứng dụng desktop được xây dựng bằng công nghệ web (React cho giao diện người dùng và Node.js cho máy chủ backend cục bộ). Mục đích của ứng dụng là quản lý công việc, hồ sơ, lịch họp và các ghi chú khác.</p>
+
+        <h2>Tệp và Thư mục chính</h2>
+
+        <section>
+            <h3>1. Các tệp tin gốc</h3>
+            <ul>
+                <li><code>index.html</code>: Đây là tệp "cửa ngõ" để trình duyệt tải và hiển thị ứng dụng. Nó chứa thẻ <code>&lt;div id="root"&gt;</code> nơi toàn bộ ứng dụng React sẽ được render.</li>
+                <li><code>main.jsx</code>: Điểm khởi đầu của ứng dụng React. Tệp này sẽ render thành phần <code>App</code> vào trong <code>&lt;div id="root"&gt;</code>.</li>
+                <li><code>App.jsx</code>: <strong>Thành phần quan trọng nhất</strong>. Nó quản lý toàn bộ trạng thái (state) và logic chính của ứng dụng, bao gồm:
+                    <ul>
+                        <li>Lưu trữ dữ liệu (hồ sơ, nhật ký, lịch họp...).</li>
+                        <li>Xử lý các hành động của người dùng (thêm, sửa, xóa).</li>
+                        <li>Quản lý giao diện (view nào đang hiển thị, modal nào đang mở).</li>
+                        <li>Tích hợp các chức năng như Pomodoro timer, đồng bộ Google Drive.</li>
+                    </ul>
+                </li>
+                <li><code>server.js</code>: <strong>Máy chủ (backend)</strong> được viết bằng Node.js.
+                    <ul>
+                        <li>Tạo một server cục bộ ở cổng <code>3001</code>.</li>
+                        <li>Cung cấp API để giao diện người dùng có thể tương tác với hệ điều hành, ví dụ như mở một thư mục hoặc tệp tin trên máy tính.</li>
+                    </ul>
+                </li>
+                <li><code>helpers.js</code>: Chứa các hàm tiện ích và hằng số được sử dụng chung trong toàn bộ dự án (ví dụ: tạo ID, định dạng ngày, định nghĩa màu sắc...).</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>2. Thư mục <code>/components</code></h3>
+            <p>Chứa các thành phần React nhỏ, có thể tái sử dụng để xây dựng giao diện.</p>
+            <ul>
+                <li><code>Forms.jsx</code>: <strong>Tệp trung tâm</strong>, chứa mã nguồn cho tất cả các biểu mẫu (form) nhập liệu của ứng dụng như:
+                    <ul>
+                        <li><code>DossierForm</code>: Tạo/sửa hồ sơ công việc.</li>
+                        <li><code>AddDocForm</code>: Cập nhật văn bản, tiến độ cho hồ sơ.</li>
+                        <li><code>DnisLogForm</code>, <code>MailLogForm</code>, <code>CoordLogForm</code>, <code>ScheduleForm</code>, <code>MeetingForm</code>: Các form cho từng loại dữ liệu tương ứng.</li>
+                    </ul>
+                </li>
+                <li><code>Modal.jsx</code>: Thành phần cơ bản để hiển thị các cửa sổ pop-up (modal).</li>
+                <li><code>FolderPopover.jsx</code>, <code>Icons.jsx</code>: Các thành phần giao diện nhỏ khác.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>3. Thư mục <code>/views</code></h3>
+            <p>Chứa các thành phần React lớn, đại diện cho các "màn hình" hoặc "khung nhìn" chính của ứng dụng.</p>
+            <ul>
+                <li><code>WorkspaceView.jsx</code>: Màn hình "Bàn làm việc" chính.</li>
+                <li><code>ArchiveView.jsx</code>: Màn hình "Kho Hồ sơ".</li>
+                <li><code>PlannerView.jsx</code>: Màn hình "Sổ kế hoạch tuần".</li>
+                <li><code>DetailView.jsx</code>: Màn hình chi tiết một hồ sơ.</li>
+                <li>... và các view khác cho từng chức năng (DNIS, Mail, Cuộc họp...).</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>4. Thư mục <code>/data</code></h3>
+            <p>Chứa các tệp dữ liệu của ứng dụng, chủ yếu là các bản sao lưu (backup).</p>
+            <ul>
+                <li><code>Backup_QLCV_YYYY-MM-DD.json</code>: Các tệp sao lưu dữ liệu của toàn bộ ứng dụng dưới định dạng JSON tại một thời điểm nhất định.</li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>

@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hướng dẫn triển khai QLCV_Merged</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Literata:opsz,wght@7..72,500;7..72,700&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F9F8F6;--card:#FFFFFF;--card-soft:#F2EFE9;
+  --ink:#18191B;--ink-soft:#484C56;--ink-faint:#7E8494;
+  --primary:#1C355E;--primary-soft:#EBF1FA;
+  --accent:#8E5311;--accent-soft:#FBF0E4;
+  --teal:#19584C;--teal-soft:#E5F3EE;
+  --danger:#9B2226;--danger-soft:#FBEAEA;
+  --line:#E4DFD5;--line-strong:#CEC7BA;
+  --font-head:'Literata',Georgia,serif;
+  --font-body:'IBM Plex Sans','Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',Consolas,monospace;
+  --fs:17px;--lh:1.7;
+}
+:root[data-theme="sepia"]{
+  --paper:#F2E9DA;--card:#FAF4EB;--card-soft:#E6DCB8;
+  --ink:#2D241C;--ink-soft:#635546;--ink-faint:#8E7F6E;
+  --primary:#5C3D24;--primary-soft:#E6D8C5;
+  --accent:#9A5A18;--accent-soft:#EDE0CB;
+  --teal:#365B47;--teal-soft:#DDE8DF;
+  --danger:#8B2B1F;--danger-soft:#F0DCCB;
+  --line:#DFD3C0;--line-strong:#C9BAA2;
+}
+:root[data-theme="dark"]{
+  --paper:#13151A;--card:#1A1D24;--card-soft:#222631;
+  --ink:#E6E8EE;--ink-soft:#9BA2B5;--ink-faint:#636B80;
+  --primary:#8CA9F2;--primary-soft:#1B2640;
+  --accent:#E5B869;--accent-soft:#302613;
+  --teal:#6FC5A8;--teal-soft:#172A23;
+  --danger:#F08A8A;--danger-soft:#3A1B1D;
+  --line:#262B38;--line-strong:#384156;
+}
+:root[data-font="serif"]{--font-body:'Lora',Georgia,serif;--lh:1.85}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:var(--fs);line-height:var(--lh);text-align:left}
+h1,h2,h3{font-family:var(--font-head);line-height:1.3;color:var(--ink)}
+h1{font-size:2em;margin:.2em 0 .4em}
+h2{font-size:1.5em;margin:0 0 .5em}
+h3{font-size:1.15em;margin:1.8em 0 .5em;color:var(--primary)}
+p{margin:.6em 0}
+a{color:var(--primary)}
+code,kbd,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+:not(pre)>code{background:var(--card-soft);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:.85em}
+kbd{background:var(--card);border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:1px 6px;font-size:.85em}
+svg.ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* toolbar */
+.doc-toolbar{position:sticky;top:0;z-index:50;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 20px;background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-family:var(--font-body)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button,.tbtn{font:500 13px var(--font-body);padding:6px 11px;border:0;background:transparent;color:var(--ink-soft);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--primary);color:var(--paper)}
+.seg button:hover:not(.on),.tbtn:hover{background:var(--card-soft)}
+.tbtn{border:1px solid var(--line-strong);border-radius:8px;background:var(--card);display:inline-flex;align-items:center;gap:6px}
+.tbtn.primary{background:var(--primary);color:var(--paper);border-color:var(--primary)}
+.sp{flex:1}
+
+/* layout */
+.doc-layout{display:flex;align-items:flex-start}
+.doc-sidebar{position:sticky;top:0;align-self:flex-start;width:290px;flex:none;height:100vh;overflow-y:auto;padding:22px 18px;border-right:1px solid var(--line);background:var(--card);scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;font-size:14px;line-height:1.45}
+.doc-sidebar .brand{font:700 15px var(--font-head);color:var(--ink)}
+.doc-sidebar .ver{font:12px var(--font-mono);color:var(--ink-faint);margin:2px 0 12px}
+.progress{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-bottom:18px}
+.progress i{display:block;height:100%;width:0;background:var(--accent)}
+.toc a{display:flex;gap:8px;padding:6px 8px;margin:1px 0;border-radius:6px;color:var(--ink-soft);text-decoration:none;border-left:3px solid transparent}
+.toc a b{font:600 12px var(--font-mono);color:var(--ink-faint);padding-top:2px;min-width:20px}
+.toc a:hover{background:var(--card-soft)}
+.toc a.on{background:var(--primary-soft);color:var(--primary);border-left-color:var(--accent);font-weight:600}
+.toc a.on b{color:var(--accent)}
+.col{flex:1;min-width:0}
+main{max-width:840px;margin:0 auto;padding:30px 28px 120px}
+body.focus .doc-sidebar{display:none}
+
+/* hero */
+.hero{padding:10px 0 26px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.eyebrow{font:600 12px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:1.06em;color:var(--ink-soft)}
+.hero-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.hero-meta .stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 14px}
+.hero-meta .stat b{font:600 1.5em var(--font-mono);display:block;line-height:1.2}
+.hero-meta .stat span{font-size:11.5px;color:var(--ink-faint)}
+
+.about,.note,.warn,.ok{border-radius:8px;padding:14px 18px;margin:18px 0;border:1px solid var(--line-strong);display:flex;gap:14px;align-items:flex-start}
+.about{background:var(--card-soft)}
+.note{background:var(--primary-soft);border-left:4px solid var(--primary)}
+.note svg{color:var(--primary)}
+.warn{background:var(--danger-soft);border-left:4px solid var(--danger)}
+.warn svg{color:var(--danger)}
+.ok{background:var(--teal-soft);border-left:4px solid var(--teal)}
+.ok svg{color:var(--teal)}
+.about>div,.note>div,.warn>div,.ok>div{flex:1;min-width:0;font-size:.95em;line-height:1.6}
+.about p:first-child,.note p:first-child,.warn p:first-child,.ok p:first-child{margin-top:0}
+.about p:last-child,.note p:last-child,.warn p:last-child,.ok p:last-child{margin-bottom:0}
+
+/* module */
+.module{padding:34px 0 10px;border-bottom:1px solid var(--line)}
+.mod-eyebrow{display:inline-flex;align-items:center;gap:6px;font:600 13px var(--font-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent-strong,var(--accent));background:var(--accent-soft);padding:4px 10px;border-radius:4px;border:1px solid var(--line-strong);margin-bottom:10px}
+
+/* steps */
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:14px 0}
+ol.steps>li{counter-increment:s;position:relative;padding:0 0 18px 50px;margin:0}
+ol.steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;background:var(--primary);color:var(--paper);font:700 14px var(--font-mono);display:flex;align-items:center;justify-content:center}
+ol.steps>li::after{content:"";position:absolute;left:16.5px;top:40px;bottom:6px;width:1px;background:var(--line-strong)}
+ol.steps>li:last-child::after{display:none}
+ol.steps>li>strong:first-child{display:block;font-weight:600;margin-top:4px}
+ol.steps ul{margin:.4em 0;padding-left:1.2em}
+ol.steps li li{margin:.2em 0}
+
+/* mock screenshot */
+.mock{border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--card);margin:12px 0;box-shadow:0 2px 6px rgba(0,0,0,.04);font-size:13.5px;line-height:1.5}
+.mock .bar{display:flex;align-items:center;gap:6px;padding:7px 12px;background:var(--card-soft);border-bottom:1px solid var(--line);font:12px var(--font-mono);color:var(--ink-soft)}
+.mock .bar i{width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
+.mock .bar span{margin-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mock .body{padding:14px 16px}
+.mock .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:5px 0}
+.mock .lbl{font:600 11.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--primary);margin-top:8px}
+.mock .field{border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;background:var(--paper);font-family:var(--font-mono);font-size:12.5px;word-break:break-all}
+.mock .btn{display:inline-block;border-radius:6px;padding:6px 14px;font-weight:600;font-size:13px;background:var(--primary);color:var(--paper)}
+.mock .btn.ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line-strong)}
+.mock .radio{display:flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:6px;margin:4px 0}
+.mock .radio.sel{border-color:var(--primary);background:var(--primary-soft)}
+.mock .radio::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid var(--line-strong);flex:none}
+.mock .radio.sel::before{border-color:var(--primary);background:var(--primary);box-shadow:inset 0 0 0 2px var(--primary-soft)}
+.mock .hl{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;background:var(--accent-soft)}
+.mock .tag{font:600 11px var(--font-mono);background:var(--accent);color:var(--paper);border-radius:3px;padding:1px 6px;margin-left:4px}
+.cap{font-size:12.5px;color:var(--ink-soft);margin:-4px 0 14px}
+
+/* code */
+.code{position:relative;margin:12px 0}
+.code pre{margin:0;background:#161A22;color:#E6E8EE;border-radius:8px;padding:14px 16px;overflow-x:auto;font:13.5px/1.6 var(--font-mono);scrollbar-width:thin}
+.code .lang{position:absolute;top:0;left:0;font:600 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;background:var(--accent);color:#fff;padding:2px 8px;border-radius:8px 0 6px 0}
+.code pre{padding-top:26px}
+.code button{position:absolute;top:6px;right:6px;font:500 12px var(--font-body);background:#2B3040;color:#E6E8EE;border:1px solid #3A4156;border-radius:6px;padding:3px 10px;cursor:pointer}
+.code button:hover{background:#3A4156}
+.c-com{color:#8B93A7}.c-kw{color:#8CA9F2}.c-str{color:#9AD7B6}
+
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:.92em}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--card-soft);font:600 12px var(--font-mono);text-transform:uppercase;letter-spacing:.04em;color:var(--primary)}
+td{background:var(--card)}
+
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;margin:22px 0}
+.stats-row .stat{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--primary);border-radius:8px;padding:14px 20px;flex:1;min-width:150px;box-shadow:0 2px 5px rgba(0,0,0,.03)}
+.stats-row .stat .num{font:700 1.7em var(--font-mono);font-variant-numeric:tabular-nums;color:var(--primary);display:block;line-height:1.15;margin-bottom:4px}
+.stats-row .stat .lbl{font-size:13px;font-weight:500;line-height:1.35;color:var(--ink-soft)}
+.stats-row .stat.highlight{border-left-color:var(--accent);background:var(--accent-soft)}
+.stats-row .stat.highlight .num{color:var(--accent)}
+
+details.qa{background:var(--card);border:1px solid var(--line);border-radius:8px;margin:8px 0}
+details.qa summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none;display:flex;gap:10px;align-items:center}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:"+";font:700 16px var(--font-mono);color:var(--accent);width:16px}
+details.qa[open] summary::before{content:"−"}
+details.qa .task-body{padding:0 16px 14px;border-top:1px solid var(--line);font-size:.94em}
+
+.check li{list-style:none;margin:.5em 0;padding-left:0}
+.check{padding-left:0}
+.check label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.check input{margin-top:.45em;width:17px;height:17px;accent-color:var(--primary);flex:none}
+.check input:checked+span{color:var(--ink-faint);text-decoration:line-through}
+
+.back-to-top{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line-strong);background:var(--card);color:var(--primary);cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:40}
+.back-to-top.show{display:flex}
+
+@media (max-width:900px){
+  .doc-layout{flex-direction:column}
+  .doc-sidebar{position:static;width:100%;height:auto;max-height:250px;border-right:none;border-bottom:1px solid var(--line)}
+  main{padding:16px;max-width:100%}
+  .doc-toolbar{overflow-x:auto;white-space:nowrap;flex-wrap:nowrap;padding:8px 12px}
+}
+@media print{
+  .doc-toolbar,.doc-sidebar,.back-to-top,.code button{display:none!important}
+  main{max-width:100%!important;margin:0!important;padding:0!important}
+  body,:root{background:#fff!important;color:#000!important}
+  details[open] summary~*{display:block!important}
+  .module,.part,.mock{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="doc-toolbar" role="toolbar" aria-label="Công cụ đọc">
+  <div class="seg" id="g-size" aria-label="Cỡ chữ">
+    <button data-v="sm">A-</button><button data-v="md" class="on">A</button><button data-v="lg">A+</button><button data-v="xl">A++</button>
+  </div>
+  <div class="seg" id="g-theme" aria-label="Giao diện">
+    <button data-v="light" class="on">Sáng</button><button data-v="sepia">Giấy ấm</button><button data-v="dark">Tối</button>
+  </div>
+  <div class="seg" id="g-font" aria-label="Phông chữ">
+    <button data-v="sans" class="on">Không chân</button><button data-v="serif">Có chân</button>
+  </div>
+  <button class="tbtn" id="b-focus">Tập trung</button>
+  <button class="tbtn" id="b-qa">Mở/đóng chi tiết</button>
+  <span class="sp"></span>
+  <button class="tbtn primary" id="b-print">In / Xuất PDF</button>
+</div>
+
+<div class="doc-layout">
+<aside class="doc-sidebar">
+  <div class="brand">QLCV_Merged — Hướng dẫn triển khai</div>
+  <div class="ver">Cập nhật 29/10/2026</div>
+  <div class="progress"><i id="prog"></i></div>
+  <nav class="toc" id="toc"></nav>
+</aside>
+
+<div class="col"><main>
+
+<header class="hero">
+  <div class="eyebrow">Hướng dẫn thao tác từng bước</div>
+  <h1>Đưa bản nâng cấp QLCV + Kho hồ sơ lên GitHub và Google Drive</h1>
+  <p class="lede">Tài liệu này liệt kê những việc <strong>bạn phải tự làm bằng tay</strong> (tạo kho GitHub, cài Google Drive for Desktop, tạo khóa đăng nhập Google) và những chỗ cần dán kết quả lại cho Claude để sửa mã.</p>
+  <div class="hero-meta">
+    <div class="stat"><b>6</b><span>Phần thao tác</span></div>
+    <div class="stat"><b>~60</b><span>Phút thực hiện</span></div>
+    <div class="stat"><b>29/10/2026</b><span>Ngày lập</span></div>
+  </div>
+</header>
+
+<section class="about part" id="p0">
+  <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+  <div>
+    <p><strong>Cơ sở của tài liệu.</strong> Nội dung dựa trên README, <code>driveSync.js</code>, <code>package.json</code>, <code>vite.config.js</code>, <code>app.py</code> trong <code>D:\_QLCV_Merged</code>. Các màn hình của GitHub, Google Cloud, Google Drive for Desktop thay đổi giao diện khá thường xuyên; hình minh họa trong tài liệu là <em>mô phỏng</em>, tên nút thực tế có thể lệch đôi chút.</p>
+    <p><strong>Phạm vi.</strong> Các bước 1–5 trong README (sửa <code>app.py</code>, gộp dữ liệu, giao diện gộp, dọn lỗi) là phần Claude sẽ viết mã. Tài liệu này chỉ lo phần bạn phải tự thao tác.</p>
+  </div>
+</section>
+
+<section class="module part" id="p1">
+  <div class="mod-eyebrow">Phần 1</div>
+  <h2>Tổng quan: có 3 "kết nối" khác nhau, đừng nhầm</h2>
+  <p>Chữ "Google Drive" xuất hiện ở hai nơi hoàn toàn độc lập trong dự án này. Hiểu rõ trước khi làm sẽ tránh được nhầm lẫn thường gặp nhất.</p>
+  <table>
+    <tr><th>Kết nối</th><th>Dùng để</th><th>Bạn làm gì</th></tr>
+    <tr><td><strong>A. GitHub (kho riêng tư)</strong></td><td>Lưu mã nguồn, có lịch sử sửa đổi, đồng bộ sang máy khác</td><td>Phần 3</td></tr>
+    <tr><td><strong>B. Drive for Desktop (Mirror)</strong></td><td>Lưu <em>file PDF, Word</em> của thư mục <code>ho-so</code> lên Drive, <code>app.py</code> đọc như thư mục thường</td><td>Phần 4</td></tr>
+    <tr><td><strong>C. Đăng nhập Google OAuth</strong></td><td>Nút "Lưu lên / Tải từ Drive" trong giao diện web, ghi file <code>QLCV_Cloud_Backup.json</code></td><td>Phần 5</td></tr>
+  </table>
+  <div class="note">
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+    <div>
+      <p><strong>B và C không liên quan nhau.</strong> Cài Drive for Desktop (B) <em>không</em> làm nút "Lưu lên Drive" (C) chạy được, và ngược lại. B xử lý file đính kèm; C chỉ lưu bản JSON danh mục để bản GitHub Pages xem được hồ sơ và nhiệm vụ.</p>
+    </div>
+  </div>
+
+  <h3>Sơ đồ luồng dữ liệu</h3>
+  <div class="mock">
+    <div class="bar"><i></i><i></i><i></i><span>Máy tính của bạn (localhost:5001)</span></div>
+    <div class="body">
+      <div class="row"><span class="field">Trình duyệt</span> → <span class="field">Flask app.py</span> → <span class="field hl">config.json → HOSO_ROOT</span></div>
+      <div class="row">↓ ghi/đọc file</div>
+      <div class="row"><span class="field">Thư mục Mirror của Drive for Desktop</span> ⇄ <span class="field">Google Drive (đám mây)</span></div>
+      <div class="row" style="margin-top:12px">Nút "Lưu lên Drive" (trình duyệt) → <span class="field">QLCV_Cloud_Backup.json</span> → <span class="field">Bản GitHub Pages (chỉ xem)</span></div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><span class="num">2</span><span class="lbl">Kho GitHub: mã nguồn (private) và bản build (public)</span></div>
+    <div class="stat"><span class="num">3</span><span class="lbl">Origin cần khai báo ở Google Cloud</span></div>
+    <div class="stat highlight"><span class="num">0</span><span class="lbl">File hồ sơ được phép đưa lên GitHub</span></div>
+  </div>
+</section>
+
+<section class="module part" id="p2">
+  <div class="mod-eyebrow">Phần 2</div>
+  <h2>Chuẩn bị máy và quyết định trước khi bắt đầu</h2>
+
+  <h3>2.1. Kiểm tra công cụ</h3>
+  <p>Mở PowerShell (<kbd>Win</kbd> + <kbd>X</kbd> → Terminal) và chạy:</p>
+  <div class="code"><span class="lang">PowerShell</span><button data-copy>Sao chép</button><pre>git --version
+node -v
+python --version</pre></div>
+  <p>Máy hiện tại đã có Git 2.56, Node 24.12, Python 3.12. Nếu máy khác báo lỗi, cài tại <code>git-scm.com</code>, <code>nodejs.org</code>, <code>python.org</code> (khi cài Python nhớ tick <em>Add Python to PATH</em>).</p>
+
+  <h3>2.2. Ba câu hỏi cần trả lời trước</h3>
+  <ol class="steps">
+    <li><strong>Tài khoản GitHub nào sẽ dùng?</strong>
+      Hiện <code>package.json</code> trỏ tới <code>github.com/lyannha2312/qlcv</code>. Nếu đó <em>chính là tài khoản của bạn</em>, giữ nguyên. Nếu bạn dùng tài khoản khác (ví dụ gắn với <code>thienan1204@gmail.com</code>), phải đổi 2 chỗ trong <code>package.json</code> (<code>homepage</code> và <code>deploy</code>) và thêm origin mới ở Phần 5. Hãy báo cho Claude tên đăng nhập GitHub của bạn.</li>
+    <li><strong>Có giữ Client ID Google cũ không?</strong>
+      Client ID đang nằm ở dòng 1 của <code>driveSync.js</code> (<code>127705182868-…</code>). Nếu bạn vẫn đăng nhập được vào dự án Google Cloud tạo ra nó, <em>giữ lại</em> (xem cảnh báo ở Phần 5.4). Chỉ tạo mới nếu không còn truy cập được.</li>
+    <li><strong>Máy nào sẽ chạy Flask?</strong>
+      Chỉ nên có <em>một</em> máy chạy <code>app.py</code> và ghi dữ liệu tại một thời điểm. Drive Mirror đồng bộ file giữa các máy, nhưng không giải quyết xung đột khi hai máy cùng sửa <code>dossiers.json</code>.</li>
+  </ol>
+</section>
+
+<section class="module part" id="p3">
+  <div class="mod-eyebrow">Phần 3</div>
+  <h2>Tạo kho GitHub và đẩy mã lên</h2>
+
+  <div class="warn">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
+    <div>
+      <p><strong>Đọc kỹ trước khi đẩy bất cứ thứ gì.</strong> Thư mục <code>backend\static\ho-so</code> chứa hơn 500 file văn bản của cơ quan; <code>dossiers.json</code> và các bản <code>backups</code> chứa danh mục hồ sơ. <strong>Không được đưa lên GitHub</strong>, kể cả kho private. Vì vậy phải tạo <code>.gitignore</code> <em>trước</em> lệnh <code>git add</code>.</p>
+    </div>
+  </div>
+
+  <h3>3.1. Tạo kho trên github.com</h3>
+  <ol class="steps">
+    <li><strong>Đăng nhập GitHub</strong>, bấm dấu <kbd>+</kbd> góc trên bên phải → <strong>New repository</strong>.</li>
+    <li><strong>Điền biểu mẫu</strong> như hình dưới.
+      <div class="mock">
+        <div class="bar"><i></i><i></i><i></i><span>github.com/new</span></div>
+        <div class="body">
+          <div class="lbl">Repository name</div>
+          <div class="row"><span class="field hl">qlcv-merged</span></div>
+          <div class="lbl">Visibility</div>
+          <div class="radio">Public</div>
+          <div class="radio sel hl">Private <span class="tag">CHỌN</span></div>
+          <div class="lbl">Initialize this repository with</div>
+          <div class="row">☐ Add a README &nbsp; ☐ Add .gitignore &nbsp; ☐ Choose a license <span class="tag">ĐỂ TRỐNG</span></div>
+          <div class="row" style="margin-top:10px"><span class="btn">Create repository</span></div>
+        </div>
+      </div>
+      <p class="cap">Để trống 3 ô khởi tạo vì thư mục trên máy đã có sẵn README.md; tích vào sẽ gây xung đột lúc đẩy lên.</p>
+    </li>
+    <li><strong>Sao chép địa chỉ kho</strong> ở trang vừa hiện, dạng <code>https://github.com/TEN_CUA_BAN/qlcv-merged.git</code>.</li>
+  </ol>
+
+  <h3>3.2. Tạo file .gitignore</h3>
+  <p>Tạo file tên <code>.gitignore</code> (có dấu chấm đầu, không có đuôi) ngay trong <code>D:\_QLCV_Merged</code> với nội dung:</p>
+  <div class="code"><span class="lang">.gitignore</span><button data-copy>Sao chép</button><pre># Dữ liệu và hồ sơ nội bộ — KHÔNG đưa lên GitHub
+backend/static/ho-so/
+backend/static/ho_so/
+backend/backups/
+backend/dossiers.json
+backend/Danh_Muc_Ho_So.xlsx
+backend/Backup_QLCV_*.json
+frontend/data/
+config.json
+data.json
+
+# Môi trường và sản phẩm build
+venv/
+test_venv/
+node_modules/
+dist/
+__pycache__/
+*.pyc</pre></div>
+  <div class="note">
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+    <div><p>Nếu muốn Claude tạo sẵn file này, chỉ cần nhắn "tạo .gitignore". Danh sách trên có thể bổ sung khi bước 2 của README tạo thêm file dữ liệu.</p></div>
+  </div>
+
+  <h3>3.3. Khởi tạo Git và đẩy lên</h3>
+  <p>Chạy lần lượt từng lệnh trong PowerShell. Dòng cuối của khối thứ hai là bước <strong>kiểm tra bắt buộc</strong>.</p>
+  <div class="code"><span class="lang">PowerShell</span><button data-copy>Sao chép</button><pre>cd D:\_QLCV_Merged
+git init -b main
+git config user.name  "Tên của bạn"
+git config user.email "thienan1204@gmail.com"
+
+git add .
+git status --short | Measure-Object -Line
+git ls-files | Select-String "ho-so|dossiers|backups"</pre></div>
+  <div class="ok">
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></svg>
+    <div><p><strong>Kết quả đúng:</strong> lệnh <code>Select-String</code> cuối cùng <em>không in ra dòng nào</em>. Nếu thấy dòng chứa <code>ho-so</code>, <code>dossiers</code> hoặc <code>backups</code>, dừng lại, chạy <code>git rm -r --cached .</code> rồi kiểm tra lại <code>.gitignore</code> và <code>git add .</code> lần nữa.</p></div>
+  </div>
+  <div class="code"><span class="lang">PowerShell</span><button data-copy>Sao chép</button><pre>git commit -m "Khởi tạo QLCV_Merged"
+git remote add origin https://github.com/TEN_CUA_BAN/qlcv-merged.git
+git push -u origin main</pre></div>
+  <p>Lần đầu đẩy, Git for Windows mở cửa sổ trình duyệt để bạn đăng nhập GitHub; bấm <strong>Authorize</strong>. Nếu không hiện, tạo Personal Access Token tại <em>GitHub → Settings → Developer settings → Personal access tokens</em> với quyền <code>repo</code>, dùng token thay mật khẩu.</p>
+
+  <h3>3.4. Kiểm tra</h3>
+  <p>Tải lại trang kho trên GitHub: phải thấy thư mục <code>backend</code>, <code>frontend</code>, file <code>README.md</code>, biểu tượng ổ khóa cạnh tên kho (Private) và <em>không</em> thấy <code>backend/static/ho-so</code>.</p>
+
+  <h3>3.5. Về bản GitHub Pages (chỉ xem)</h3>
+  <p>README giữ lại bản GitHub Pages để xem hồ sơ, nhiệm vụ. Lệnh <code>npm run deploy</code> hiện đẩy thư mục <code>dist</code> lên nhánh <code>gh-pages</code> của kho <code>lyannha2312/qlcv</code>.</p>
+  <div class="warn">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
+    <div>
+      <p>GitHub Pages của tài khoản miễn phí chỉ phục vụ từ kho <strong>public</strong>, và mọi thứ trong bản build (kể cả mật khẩu <code>APP_PASSWORD</code> ở <code>security.js</code>) đọc được bằng trình duyệt. Vì thế giữ <em>hai kho riêng</em>: kho mã nguồn <code>qlcv-merged</code> (private) và kho <code>qlcv</code> chỉ chứa bản build (public). Mật khẩu đó chỉ là chốt chặn thao tác nhầm, không phải bảo mật thật.</p>
+    </div>
+  </div>
+  <p>Khi muốn cập nhật bản Pages: chạy <code>npm run deploy</code> trong <code>frontend</code>, rồi vào kho <code>qlcv</code> → <strong>Settings → Pages</strong>, mục <em>Source</em> chọn <em>Deploy from a branch</em>, nhánh <code>gh-pages</code>, thư mục <code>/ (root)</code>. Lưu ý: bản build cho Flask sẽ cần <code>base</code> khác (<code>vite.config.js</code> hiện là <code>/qlcv/</code>); Claude sẽ tách hai chế độ build ở bước 4 của README.</p>
+</section>
+
+<section class="module part" id="p4">
+  <div class="mod-eyebrow">Phần 4</div>
+  <h2>Cài Google Drive for Desktop và chuyển thư mục hồ sơ</h2>
+  <p>Đây là "cách A" đã chốt trong README: thư mục <code>ho-so</code> nằm trong thư mục Drive trên máy, <code>app.py</code> đọc/ghi như bình thường, Drive tự đẩy lên đám mây.</p>
+
+  <h3>4.1. Cài đặt và đăng nhập</h3>
+  <ol class="steps">
+    <li><strong>Tải bộ cài</strong> từ trang chính thức <code>google.com/drive/download</code> (mục Drive for desktop), chạy file <code>GoogleDriveSetup.exe</code>.</li>
+    <li><strong>Đăng nhập</strong> bằng đúng tài khoản Google sẽ chứa hồ sơ. Nên dùng cùng tài khoản dùng cho nút "Lưu lên Drive" ở Phần 5 để dễ quản lý.</li>
+    <li><strong>Mở Preferences</strong>: bấm biểu tượng Drive ở khay hệ thống (góc phải thanh tác vụ) → biểu tượng bánh răng → <strong>Preferences</strong>.
+      <div class="mock">
+        <div class="bar"><i></i><i></i><i></i><span>Google Drive — Preferences</span></div>
+        <div class="body">
+          <div class="lbl">My Drive syncing options</div>
+          <div class="radio">Stream files <span style="color:var(--ink-faint)">— tải khi mở, chiếm ít ổ đĩa</span></div>
+          <div class="radio sel hl">Mirror files <span class="tag">CHỌN</span> <span style="color:var(--ink-soft)">— giữ bản đầy đủ trên máy</span></div>
+          <div class="lbl">Folder location</div>
+          <div class="row"><span class="field">D:\GoogleDrive</span> <span class="btn ghost">Thay đổi</span></div>
+        </div>
+      </div>
+      <p class="cap">Mô phỏng. Bản tiếng Việt có thể ghi "Sao chép tệp" cho Mirror và "Truyền trực tuyến tệp" cho Stream.</p>
+    </li>
+    <li><strong>Chọn Mirror files</strong> (không chọn Stream). Với Stream, file chưa mở sẽ chỉ là "tham chiếu", Flask có thể báo lỗi khi đọc hoặc liệt kê.</li>
+    <li><strong>Chọn vị trí thư mục ngắn</strong>, ví dụ <code>D:\GoogleDrive</code>. Đường dẫn quá dài (Windows giới hạn ~260 ký tự; README đã ghi nhận một đường dẫn 253 ký tự) sẽ gây lỗi, nên gốc càng ngắn càng tốt.</li>
+  </ol>
+
+  <h3>4.2. Chép thư mục hồ sơ sang Drive</h3>
+  <div class="warn">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
+    <div><p>Theo README: <strong>chép</strong> thư mục <code>ho-so</code> sang Drive, không di chuyển, không trỏ thẳng vào thư mục gốc cũ để thử nghiệm. Giữ nguyên bản gốc cho đến khi kiểm tra xong.</p></div>
+  </div>
+  <div class="code"><span class="lang">PowerShell</span><button data-copy>Sao chép</button><pre># Tạo thư mục đích trong Drive
+New-Item -ItemType Directory -Force "D:\GoogleDrive\My Drive\QLCV"
+
+# Chép (robocopy: giữ nguyên cấu trúc, an toàn với tên tiếng Việt)
+robocopy "D:\_QLCV_Merged\backend\static\ho-so" "D:\GoogleDrive\My Drive\QLCV\ho-so" /E /COPY:DAT /R:1 /W:1</pre></div>
+  <p>Kiểm tra: đường dẫn trên là ví dụ. Hãy mở File Explorer, vào thư mục Drive thực tế trên máy bạn và dùng đúng đường dẫn đó (thanh địa chỉ → bấm chuột phải → <em>Copy address as text</em>). Sau đó chờ biểu tượng Drive ở khay hệ thống báo đồng bộ xong (dấu tích xanh) rồi mở <code>drive.google.com</code> trên web kiểm tra thư mục <code>QLCV/ho-so</code> đã có đủ file.</p>
+
+  <h3>4.3. Báo đường dẫn cho Claude</h3>
+  <p>Bước 1 của README sẽ tạo <code>config.json</code> chứa <code>HOSO_ROOT</code> và sửa <code>app.py</code> đọc từ đó. Bạn chỉ cần gửi cho Claude <strong>đường dẫn đầy đủ</strong> tới thư mục <code>ho-so</code> vừa chép, ví dụ:</p>
+  <div class="code"><span class="lang">config.json (dự kiến)</span><button data-copy>Sao chép</button><pre>{
+  "HOSO_ROOT": "D:\\GoogleDrive\\My Drive\\QLCV\\ho-so"
+}</pre></div>
+  <div class="note">
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+    <div><p>Trong JSON, mỗi dấu <code>\</code> phải viết thành <code>\\</code>. Hiện <code>app.py</code> vẫn cố định <code>HOSO_ROOT</code> là <code>static/ho-so</code> cạnh file; <code>config.json</code> chưa tồn tại cho đến khi Claude làm bước 1.</p></div>
+  </div>
+
+  <h3>4.4. Lưu ý vận hành</h3>
+  <ul>
+    <li>Đợi Drive đồng bộ xong rồi mới tắt máy; đồng bộ dở dang có thể để lại file chưa đầy đủ.</li>
+    <li>Không chạy Flask đồng thời trên hai máy cùng trỏ vào một thư mục Drive.</li>
+    <li><code>frontend\server.js</code> (cổng 3001, mở thư mục bằng Explorer) đang tìm trong <code>D:\</code>; nếu Drive nằm ổ khác, cần sửa <code>SEARCH_ROOTS</code>.</li>
+  </ul>
+</section>
+
+<section class="module part" id="p5">
+  <div class="mod-eyebrow">Phần 5</div>
+  <h2>Cấp quyền Google cho nút "Lưu lên / Tải từ Drive"</h2>
+  <p>Phần này dùng đăng nhập OAuth của Google (thư viện Google Identity Services trong <code>driveSync.js</code>) với quyền <code>drive.file</code>: ứng dụng chỉ thấy file <em>do chính nó tạo ra</em>, không đọc được phần còn lại của Drive.</p>
+
+  <div class="warn">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
+    <div>
+      <p><strong>Cảnh báo quan trọng về Client ID mới.</strong> Với quyền <code>drive.file</code>, file <code>QLCV_Cloud_Backup.json</code> chỉ hiện với <em>đúng Client ID đã tạo ra nó</em>. Nếu bạn tạo Client ID mới, nút "Tải từ Drive" sẽ không thấy bản backup cũ. Cách xử lý: trước khi đổi, dùng bản cũ <strong>Xuất JSON</strong> ra máy, sau đó nhập lại vào bản mới và bấm "Lưu lên Drive" để tạo file mới.</p>
+    </div>
+  </div>
+
+  <h3>5.1. Xác định dự án Google Cloud đang giữ Client ID cũ</h3>
+  <ol class="steps">
+    <li>Vào <code>console.cloud.google.com</code>, đăng nhập tài khoản đã tạo Client ID.</li>
+    <li>Bấm bộ chọn dự án trên thanh đầu trang, chọn dự án phù hợp.</li>
+    <li>Mở <strong>APIs &amp; Services → Credentials</strong>, tìm dòng <em>OAuth 2.0 Client IDs</em> có mã bắt đầu bằng <code>127705182868-</code>. Thấy là đang truy cập đúng dự án. Không thấy: chuyển sang 5.2 để tạo mới.</li>
+  </ol>
+
+  <h3>5.2. (Chỉ khi cần tạo mới) Tạo dự án và bật Drive API</h3>
+  <ol class="steps">
+    <li><strong>Tạo dự án</strong>: bộ chọn dự án → <strong>New project</strong> → đặt tên <code>QLCV</code> → Create.</li>
+    <li><strong>Bật Drive API</strong>: <strong>APIs &amp; Services → Library</strong> → tìm "Google Drive API" → <strong>Enable</strong>.</li>
+    <li><strong>Cấu hình màn hình đồng ý</strong> (menu hiện nay tên <em>Google Auth Platform</em>, trước đây là <em>OAuth consent screen</em>):
+      <ul>
+        <li><em>App name</em>: <code>QLCV</code>; <em>User support email</em> và <em>Developer contact</em>: email của bạn.</li>
+        <li><em>Audience</em> / <em>User type</em>: <strong>External</strong>.</li>
+        <li>Mục <em>Data Access / Scopes</em>: thêm <code>.../auth/drive.file</code>.</li>
+        <li>Nếu để trạng thái <em>Testing</em>: thêm chính email bạn vào <strong>Test users</strong>, nếu không sẽ bị chặn "Access blocked". Muốn bỏ giới hạn này, bấm <strong>Publish app</strong> (quyền <code>drive.file</code> không thuộc nhóm nhạy cảm nên thường không cần xét duyệt).</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h3>5.3. Khai báo Authorized JavaScript origins</h3>
+  <p>Đây là chỗ <strong>bắt buộc phải làm</strong> cho bản nâng cấp, vì giao diện sẽ chạy ở địa chỉ mới <code>localhost:5001</code> do Flask phục vụ. Thiếu origin sẽ gặp lỗi <code>origin_mismatch</code> khi bấm nút.</p>
+  <ol class="steps">
+    <li>Vào <strong>Credentials</strong> → bấm tên Client ID (biểu tượng bút chì) → mục <strong>Authorized JavaScript origins</strong> → <strong>Add URI</strong>.</li>
+    <li><strong>Thêm các origin</strong> như bảng dưới.
+      <div class="mock">
+        <div class="bar"><i></i><i></i><i></i><span>Edit OAuth client ID — Web application</span></div>
+        <div class="body">
+          <div class="lbl">Authorized JavaScript origins</div>
+          <div class="row"><span class="field hl">http://localhost:5001</span></div>
+          <div class="row"><span class="field hl">http://localhost:5173</span></div>
+          <div class="row"><span class="field hl">https://TEN_GITHUB.github.io</span></div>
+          <div class="lbl">Authorized redirect URIs</div>
+          <div class="row"><span class="field" style="color:var(--ink-faint)">(để trống — không cần)</span></div>
+          <div class="row" style="margin-top:10px"><span class="btn">Save</span></div>
+        </div>
+      </div>
+    </li>
+    <li><strong>Bấm Save</strong>, chờ vài phút (Google ghi chú có thể mất đến vài giờ để hiệu lực, thường chỉ vài phút).</li>
+  </ol>
+  <table>
+    <tr><th>Origin</th><th>Dùng khi</th></tr>
+    <tr><td><code>http://localhost:5001</code></td><td>Bản gộp do Flask phục vụ (hướng đi chính)</td></tr>
+    <tr><td><code>http://localhost:5173</code></td><td>Chạy thử khi phát triển bằng <code>npm run dev</code></td></tr>
+    <tr><td><code>https://TEN_GITHUB.github.io</code></td><td>Bản GitHub Pages. Chỉ ghi <em>origin</em>: không có <code>/qlcv</code>, không có dấu <code>/</code> ở cuối</td></tr>
+  </table>
+  <div class="warn">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
+    <div><p>Phải truy cập bằng <code>localhost</code>, <strong>không dùng địa chỉ IP</strong> (ví dụ <code>192.168.x.x:5001</code>). Google không chấp nhận origin IP thô qua http, nên nút Drive sẽ lỗi nếu mở từ máy khác trong mạng LAN.</p></div>
+  </div>
+
+  <h3>5.4. Tạo Client ID mới (chỉ khi không giữ được cái cũ)</h3>
+  <ol class="steps">
+    <li><strong>Credentials → Create credentials → OAuth client ID</strong>.</li>
+    <li><strong>Application type</strong>: <em>Web application</em>; đặt tên <code>QLCV web</code>; thêm 3 origin ở mục 5.3; bấm <strong>Create</strong>.</li>
+    <li><strong>Sao chép Client ID</strong> (dạng <code>…apps.googleusercontent.com</code>). Không cần Client Secret.</li>
+    <li><strong>Dán vào dòng 1</strong> của <code>frontend\driveSync.js</code> thay cho giá trị cũ, hoặc gửi cho Claude để thay. Client ID không phải bí mật nên để trong mã là bình thường.</li>
+  </ol>
+
+  <h3>5.5. Thử nghiệm nút Drive</h3>
+  <ol class="steps">
+    <li>Mở ứng dụng ở <code>http://localhost:5001</code> (sau khi bản gộp hoàn thành) hoặc <code>http://localhost:5173</code> khi chạy <code>npm run dev</code>.</li>
+    <li>Bấm <strong>Lưu lên Drive</strong>, nhập mật khẩu xác nhận (<code>security.js</code>), chọn tài khoản Google, bấm <strong>Allow</strong> ở màn hình cấp quyền.</li>
+    <li>Vào <code>drive.google.com</code>, thư mục gốc <em>My Drive</em> phải có file <code>QLCV_Cloud_Backup.json</code>.</li>
+    <li>Thử bấm <strong>Tải từ Drive</strong> để chắc chắn đọc lại được.</li>
+  </ol>
+  <details class="qa"><summary>Gặp lỗi thường gặp thì sao?</summary>
+    <div class="task-body">
+      <table>
+        <tr><th>Thông báo</th><th>Nguyên nhân / cách xử lý</th></tr>
+        <tr><td><code>Error 400: origin_mismatch</code></td><td>Origin chưa khai báo hoặc gõ sai (thừa <code>/</code>, sai cổng, dùng IP). Sửa ở 5.3, chờ vài phút.</td></tr>
+        <tr><td><code>Access blocked / app not verified</code></td><td>Dự án ở trạng thái Testing mà email chưa là Test user. Thêm email hoặc Publish app.</td></tr>
+        <tr><td><code>Error 403: access_denied</code> hoặc API chưa bật</td><td>Chưa Enable Google Drive API ở 5.2.</td></tr>
+        <tr><td>"Thư viện Google chưa tải xong"</td><td>Chưa có Internet hoặc bị chặn <code>accounts.google.com</code>; thử lại sau vài giây.</td></tr>
+        <tr><td>"Tải từ Drive" không thấy dữ liệu</td><td>Đổi Client ID hoặc dùng tài khoản Google khác với lúc lưu (xem cảnh báo đầu Phần 5).</td></tr>
+        <tr><td>Cửa sổ đăng nhập bị chặn</td><td>Cho phép pop-up của trang web trong trình duyệt.</td></tr>
+      </table>
+    </div>
+  </details>
+</section>
+
+<section class="module part" id="p6">
+  <div class="mod-eyebrow">Phần 6</div>
+  <h2>Chạy thử và danh sách kiểm tra cuối</h2>
+
+  <h3>6.1. Chạy thử hiện tại (trước khi có bản gộp)</h3>
+  <p>Hiện hai phần vẫn chạy riêng. Để kiểm tra môi trường trên máy mới:</p>
+  <div class="code"><span class="lang">PowerShell</span><button data-copy>Sao chép</button><pre># Giao diện QLCV (dev)
+cd D:\_QLCV_Merged\frontend
+npm install
+npm run start        # vite (5173) + server.js mở thư mục (3001)
+
+# Kho hồ sơ Flask — mở cửa sổ khác
+cd D:\_QLCV_Merged\backend
+.\Mo_KhoHoSo.bat     # tự tạo venv, mở http://localhost:5001</pre></div>
+  <p>Lần đầu <code>npm install</code> cần Internet vì thư viện <code>xlsx</code> tải từ <code>cdn.sheetjs.com</code>. Thư mục <code>node_modules</code>, <code>dist</code>, <code>venv</code> chưa được chép sang bản gộp nên bước này là bắt buộc.</p>
+
+  <div class="warn">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
+    <div><p><code>app.py</code> hiện mở <code>host="0.0.0.0"</code> và không có mật khẩu (đã ghi trong bước 5 của README). Khi Windows hỏi quyền tường lửa lần đầu, chỉ tick <strong>Private networks</strong>, bỏ tick <strong>Public networks</strong>, để máy khác trong mạng công cộng không truy cập được kho hồ sơ.</p></div>
+  </div>
+
+  <h3>6.2. Danh sách kiểm tra</h3>
+  <ul class="check">
+    <li><label><input type="checkbox"><span>Đã xác định tên đăng nhập GitHub và báo cho Claude</span></label></li>
+    <li><label><input type="checkbox"><span>Tạo kho <code>qlcv-merged</code> ở chế độ Private, không tích README/.gitignore/license</span></label></li>
+    <li><label><input type="checkbox"><span>Có <code>.gitignore</code> trước khi <code>git add .</code></span></label></li>
+    <li><label><input type="checkbox"><span><code>git ls-files | Select-String "ho-so|dossiers|backups"</code> không in ra gì</span></label></li>
+    <li><label><input type="checkbox"><span>Đã <code>git push -u origin main</code>, kiểm tra trên GitHub không có thư mục <code>ho-so</code></span></label></li>
+    <li><label><input type="checkbox"><span>Cài Drive for Desktop, chọn <strong>Mirror files</strong>, thư mục gốc đường dẫn ngắn</span></label></li>
+    <li><label><input type="checkbox"><span>Chép (không di chuyển) <code>ho-so</code> sang Drive, đợi đồng bộ xong và đối chiếu trên drive.google.com</span></label></li>
+    <li><label><input type="checkbox"><span>Gửi Claude đường dẫn <code>HOSO_ROOT</code> để tạo <code>config.json</code></span></label></li>
+    <li><label><input type="checkbox"><span>Drive API đã Enable; màn hình đồng ý ở External, có Test user hoặc đã Publish</span></label></li>
+    <li><label><input type="checkbox"><span>Đã thêm 3 origin (5001, 5173, github.io) và Save</span></label></li>
+    <li><label><input type="checkbox"><span>Nếu tạo Client ID mới: đã Xuất JSON từ bản cũ và dán Client ID mới vào <code>driveSync.js</code></span></label></li>
+    <li><label><input type="checkbox"><span>Bấm "Lưu lên Drive" thấy file <code>QLCV_Cloud_Backup.json</code> trong My Drive; "Tải từ Drive" đọc lại được</span></label></li>
+    <li><label><input type="checkbox"><span>Tường lửa Windows: chỉ cho phép Private networks</span></label></li>
+  </ul>
+
+  <h3>6.3. Việc nào của ai</h3>
+  <table>
+    <tr><th>Bạn tự làm (cần tài khoản)</th><th>Claude làm trong mã</th></tr>
+    <tr><td>Tạo kho GitHub, đăng nhập khi <code>git push</code></td><td>Tạo <code>.gitignore</code>, đổi <code>package.json</code> nếu đổi tài khoản</td></tr>
+    <tr><td>Cài Drive for Desktop, chọn Mirror, chép <code>ho-so</code></td><td>Tạo <code>config.json</code>, sửa <code>app.py</code> đọc <code>HOSO_ROOT</code></td></tr>
+    <tr><td>Thao tác trên Google Cloud Console</td><td>Dán Client ID, tách chế độ build (Pages / Flask)</td></tr>
+    <tr><td>Chọn bản đúng cho 9 hồ sơ lệch nhau</td><td>Script liệt kê 9 hồ sơ lệch, giao diện gộp, dọn lỗi</td></tr>
+  </table>
+</section>
+
+</main></div>
+</div>
+
+<button class="back-to-top" id="top" aria-label="Lên đầu trang"><svg class="ic" viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></svg></button>
+
+<script>
+(function(){
+  var store = {
+    get:function(k){try{return window.localStorage.getItem(k);}catch(e){return null;}},
+    set:function(k,v){try{window.localStorage.setItem(k,v);}catch(e){}}
+  };
+  var root = document.documentElement;
+  var SIZES = {sm:[15,1.6],md:[17,1.7],lg:[19,1.75],xl:[21.5,1.8]};
+
+  function group(id, apply, initial){
+    var g = document.getElementById(id), btns = g.querySelectorAll('button');
+    function set(v){
+      btns.forEach(function(b){b.classList.toggle('on', b.dataset.v===v);});
+      apply(v);
+    }
+    btns.forEach(function(b){b.addEventListener('click',function(){set(b.dataset.v);});});
+    set(initial);
+    return set;
+  }
+  function pref(k,def,allowed){var v=store.get(k);return allowed.indexOf(v)>-1?v:def;}
+
+  group('g-size',function(v){
+    var s=SIZES[v]; root.style.setProperty('--fs',s[0]+'px'); root.style.setProperty('--lh',s[1]); store.set('qd-size',v);
+  },pref('qd-size','md',['sm','md','lg','xl']));
+  group('g-theme',function(v){
+    if(v==='light') root.removeAttribute('data-theme'); else root.setAttribute('data-theme',v);
+    store.set('qd-theme',v);
+  },pref('qd-theme','light',['light','sepia','dark']));
+  group('g-font',function(v){
+    if(v==='serif') root.setAttribute('data-font','serif'); else root.removeAttribute('data-font');
+    store.set('qd-font',v);
+  },pref('qd-font','sans',['sans','serif']));
+
+  document.getElementById('b-focus').addEventListener('click',function(){document.body.classList.toggle('focus');});
+  var expanded=false;
+  document.getElementById('b-qa').addEventListener('click',function(){
+    expanded=!expanded;
+    document.querySelectorAll('details').forEach(function(d){d.open=expanded;});
+  });
+  document.getElementById('b-print').addEventListener('click',function(){window.print();});
+
+  // Mục lục tự sinh từ các .module
+  var toc=document.getElementById('toc'), parts=document.querySelectorAll('.module');
+  parts.forEach(function(m,i){
+    var a=document.createElement('a'); a.href='#'+m.id;
+    a.innerHTML='<b>'+(i+1)+'</b><span>'+m.querySelector('h2').textContent+'</span>';
+    toc.appendChild(a);
+  });
+  var links=toc.querySelectorAll('a');
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(e.isIntersecting){links.forEach(function(l){l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id);});}
+    });
+  },{rootMargin:'-20% 0px -70% 0px'});
+  parts.forEach(function(m){io.observe(m);});
+
+  // Tiến độ đọc và nút lên đầu trang
+  var prog=document.getElementById('prog'), top=document.getElementById('top');
+  function onScroll(){
+    var h=document.documentElement.scrollHeight-window.innerHeight;
+    prog.style.width=(h>0?Math.min(100,window.scrollY/h*100):0)+'%';
+    top.classList.toggle('show',window.scrollY>400);
+  }
+  window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+  top.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+
+  // Nút sao chép trong khối mã
+  document.querySelectorAll('.code button[data-copy]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var t=b.parentNode.querySelector('pre').innerText;
+      function done(){var o=b.textContent;b.textContent='Đã chép';setTimeout(function(){b.textContent=o;},1400);}
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,done);}
+      else{var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);done();}
+    });
+  });
+
+  // Ghi nhớ ô đã tick trong danh sách kiểm tra
+  document.querySelectorAll('.check input').forEach(function(c,i){
+    c.checked=store.get('qd-chk'+i)==='1';
+    c.addEventListener('change',function(){store.set('qd-chk'+i,c.checked?'1':'0');});
+  });
+
+  // In: mở bung mọi <details>
+  var st=null;
+  window.addEventListener('beforeprint',function(){st=[];document.querySelectorAll('details').forEach(function(d){st.push([d,d.open]);d.open=true;});});
+  window.addEventListener('afterprint',function(){if(st){st.forEach(function(p){p[0].open=p[1];});st=null;}});
+})();
+</script>
+</body>
+</html>

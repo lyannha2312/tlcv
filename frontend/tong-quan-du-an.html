@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QLCV – Tổng quan dự án</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #263346;
+      --border: #334155;
+      --accent: #38bdf8;
+      --accent2: #818cf8;
+      --accent3: #34d399;
+      --accent4: #fb923c;
+      --accent5: #f472b6;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --badge-bg: #0f172a;
+    }
+    html.light {
+      --bg: #f0f9ff;
+      --surface: #ffffff;
+      --surface2: #f1f5f9;
+      --border: #cbd5e1;
+      --accent: #0284c7;
+      --accent2: #7c3aed;
+      --accent3: #059669;
+      --accent4: #ea580c;
+      --accent5: #db2777;
+      --text: #0f172a;
+      --muted: #64748b;
+      --badge-bg: #f8fafc;
+    }
+    html.light body { background: var(--bg); }
+    html.light .note { color: #94a3b8; }
+    html.light .tree li::before { color: #cbd5e1; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 32px 16px 64px;
+    }
+
+    .hero { text-align: center; margin-bottom: 48px; }
+    .hero h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p { color: var(--muted); margin-top: 8px; font-size: 1rem; }
+
+    .grid        { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; max-width: 1280px; margin: 0 auto; }
+    .grid.wide   { grid-template-columns: 1fr; max-width: 1280px; margin: 0 auto 20px; }
+    .grid.two    { grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); max-width: 1280px; margin: 0 auto 20px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-title {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: 1rem; color: var(--accent);
+    }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 99px;
+      font-size: 11px; font-weight: 600;
+      background: var(--badge-bg); border: 1px solid var(--border);
+    }
+    .badge.blue   { color: var(--accent);  border-color: var(--accent); }
+
+    .tree { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 13px; }
+    .tree ul { list-style: none; padding-left: 20px; }
+    .tree > ul { padding-left: 0; }
+    .tree li { padding: 2px 0; }
+    .tree li::before      { content: "├── "; color: var(--border); }
+    .tree li:last-child::before { content: "└── "; color: var(--border); }
+    .folder      { color: var(--accent); font-weight: 600; }
+    .file        { color: var(--muted); }
+    .file.entry  { color: var(--accent3); font-weight: 600; }
+    .file.config { color: var(--accent4); }
+    .file.doc    { color: var(--accent2); }
+    .file.data   { color: var(--accent5); }
+    .note        { color: #64748b; font-size: 12px; margin-left: 6px; }
+
+    .tech-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tech-item {
+      display: flex; flex-direction: column;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; min-width: 130px; flex: 1;
+    }
+    .tech-item .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+    .tech-item .value { font-weight: 600; font-size: 13px; }
+
+    .feature-list { display: flex; flex-direction: column; gap: 8px; }
+    .feature {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--surface2); border-radius: 8px; padding: 10px 12px;
+    }
+    .feature .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .dot.blue   { background: var(--accent); }
+    .dot.purple { background: var(--accent2); }
+    .dot.green  { background: var(--accent3); }
+    .dot.orange { background: var(--accent4); }
+    .dot.pink   { background: var(--accent5); }
+
+    .views-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .view-item {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px;
+    }
+    .view-item .vname { font-weight: 600; margin-bottom: 2px; }
+    .view-item .vdesc { font-size: 12px; color: var(--muted); }
+
+    .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .flow-step {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 14px;
+      font-size: 13px; font-weight: 600; white-space: nowrap;
+    }
+    .flow-arrow { color: var(--muted); font-size: 18px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    code {
+      background: var(--badge-bg); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 6px;
+      font-family: 'Cascadia Code', monospace; font-size: 12px; color: var(--accent3);
+    }
+
+    .endpoint { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .endpoint:last-child { border-bottom: none; }
+    .method { font-weight: 700; font-size: 12px; width: 40px; }
+    .method.get { color: var(--accent3); }
+    .ep-path { font-family: monospace; font-size: 13px; }
+    .ep-desc { color: var(--muted); font-size: 12px; margin-left: auto; }
+
+    .section-heading {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted);
+      margin: 36px auto 14px; max-width: 1280px; padding-left: 4px;
+    }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px auto; max-width: 1280px; }
+
+    /* ── Theme toggle ── */
+    .theme-toggle {
+      position: fixed;
+      top: 16px; right: 16px;
+      z-index: 999;
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      transition: background .2s, color .2s, border-color .2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 1.6rem; }
+      .grid.two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀️ Sáng</button>
+
+<div class="hero">
+  <h1>QLCV – Quản Lý Công Việc</h1>
+  <p>Tổng quan kiến trúc &amp; cấu trúc dự án &nbsp;•&nbsp; cập nhật 24/06/2026</p>
+</div>
+
+<!-- TECH STACK -->
+<p class="section-heading">Stack công nghệ</p>
+<div class="grid wide">
+  <div class="card">
+    <div class="card-title"><span>⚡</span> Tech Stack</div>
+    <div class="tech-row">
+      <div class="tech-item"><div class="label">Frontend</div><div class="value" style="color:var(--accent)">React 18.2</div></div>
+      <div class="tech-item"><div class="label">Build Tool</div><div class="value" style="color:var(--accent3)">Vite 4.4</div></div>
+      <div class="tech-item"><div class="label">Styling</div><div class="value" style="color:var(--accent4)">Tailwind CSS 3.3</div></div>
+      <div class="tech-item"><div class="label">Backend</div><div class="value" style="color:var(--accent2)">Node.js HTTP</div></div>
+      <div class="tech-item"><div class="label">Cloud Sync</div><div class="value" style="color:var(--accent5)">Google Drive API v3</div></div>
+      <div class="tech-item"><div class="label">Export</div><div class="value" style="color:var(--accent3)">SheetJS (XLSX)</div></div>
+      <div class="tech-item"><div class="label">Deployment</div><div class="value" style="color:var(--accent)">GitHub Pages</div></div>
+      <div class="tech-item"><div class="label">Storage</div><div class="value" style="color:var(--accent4)">localStorage + JSON</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- FILE TREE -->
+<p class="section-heading">Cấu trúc thư mục</p>
+<div class="grid two">
+
+  <div class="card">
+    <div class="card-title"><span>📁</span> Cấu trúc tổng thể <code style="margin-left:auto;font-size:11px">d:\_QLCV\</code></div>
+    <div class="tree">
+      <ul>
+        <li><span class="folder">components/</span> <span class="note">— React UI components</span></li>
+        <li><span class="folder">views/</span> <span class="note">— Page views</span></li>
+        <li><span class="folder">data/</span> <span class="note">— JSON backups</span></li>
+        <li><span class="folder">dist/</span> <span class="note">— Vite build output</span></li>
+        <li><span class="folder">node_modules/</span> <span class="note">— npm packages</span></li>
+        <li><span class="folder">.claude/</span> <span class="note">— Claude Code settings</span></li>
+        <li><span class="file entry">App.jsx</span> <span class="note">— root component (52 KB)</span></li>
+        <li><span class="file entry">main.jsx</span> <span class="note">— React entry point</span></li>
+        <li><span class="file entry">index.html</span> <span class="note">— HTML shell</span></li>
+        <li><span class="file">index.css</span> <span class="note">— global styles</span></li>
+        <li><span class="file">helpers.js</span> <span class="note">— utilities &amp; constants</span></li>
+        <li><span class="file">Icons.jsx</span> <span class="note">— SVG icons</span></li>
+        <li><span class="file">driveSync.js</span> <span class="note">— Google Drive integration</span></li>
+        <li><span class="file entry">server.js</span> <span class="note">— Node.js file-opener server</span></li>
+        <li><span class="file config">package.json</span></li>
+        <li><span class="file config">vite.config.js</span></li>
+        <li><span class="file config">tailwind.config.js</span></li>
+        <li><span class="file config">postcss.config.js</span></li>
+        <li><span class="file data">HoSo_Import_Template.json</span></li>
+        <li><span class="file doc">qlcv.html</span> <span class="note">— static export (173 KB)</span></li>
+      </ul>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px">
+      <span style="font-size:12px;color:var(--accent3)">■ Entry point</span>
+      <span style="font-size:12px;color:var(--accent4)">■ Config</span>
+      <span style="font-size:12px;color:var(--accent5)">■ Data</span>
+      <span style="font-size:12px;color:var(--accent2)">■ Docs</span>
+      <span style="font-size:12px;color:var(--muted)">■ Source</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🧩</span> components/ &amp; views/</div>
+    <div class="tree">
+      <ul>
+        <li><span class="folder">components/</span>
+          <ul>
+            <li><span class="file">Modal.jsx</span> <span class="note">— modal dialog</span></li>
+            <li><span class="file">Forms.jsx</span> <span class="note">— DossierForm, AddDocForm, DnisLogForm, MailLogForm, CoordLogForm, ScheduleForm, MeetingForm</span></li>
+            <li><span class="file">FolderPopover.jsx</span> <span class="note">— chọn thư mục</span></li>
+          </ul>
+        </li>
+        <li><span class="folder">views/</span>
+          <ul>
+            <li><span class="file">WorkspaceView.jsx</span> <span class="note">— Dashboard chính</span></li>
+            <li><span class="file">ArchiveView.jsx</span> <span class="note">— Hồ sơ đã lưu trữ</span></li>
+            <li><span class="file">DetailView.jsx</span> <span class="note">— Chi tiết hồ sơ</span></li>
+            <li><span class="file">PlannerView.jsx</span> <span class="note">— Kế hoạch tuần</span></li>
+            <li><span class="file">DnisView.jsx</span> <span class="note">— Nhật ký điện thoại</span></li>
+            <li><span class="file">MailView.jsx</span> <span class="note">— Nhật ký email</span></li>
+            <li><span class="file">CoordinationsView.jsx</span> <span class="note">— Phối hợp</span></li>
+            <li><span class="file">MeetingsView.jsx</span> <span class="note">— Quản lý cuộc họp</span></li>
+          </ul>
+        </li>
+        <li><span class="folder">data/</span>
+          <ul>
+            <li><span class="file data">Backup_QLCV_2026-06-11.json</span></li>
+            <li><span class="file data">Backup_QLCV_2026-06-14.json</span></li>
+            <li><span class="file data">Backup_QLCV_2026-06-16.json</span></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- VIEWS -->
+<p class="section-heading">Các View &amp; tính năng</p>
+<div class="grid wide">
+  <div class="card">
+    <div class="card-title"><span>🖥️</span> 8 Views chính</div>
+    <div class="views-grid">
+      <div class="view-item"><div class="vname" style="color:var(--accent)">WorkspaceView</div><div class="vdesc">Dashboard · danh sách công việc đang xử lý, tìm kiếm, lọc</div></div>
+      <div class="view-item"><div class="vname" style="color:var(--accent2)">DetailView</div><div class="vdesc">Chi tiết 1 hồ sơ: tài liệu, logs, tiến độ</div></div>
+      <div class="view-item"><div class="vname" style="color:var(--accent3)">ArchiveView</div><div class="vdesc">Kho hồ sơ đã lưu trữ / hoàn thành</div></div>
+      <div class="view-item"><div class="vname" style="color:var(--accent4)">PlannerView</div><div class="vdesc">Kế hoạch tuần dạng lịch</div></div>
+      <div class="view-item"><div class="vname" style="color:var(--accent5)">DnisView</div><div class="vdesc">Nhật ký điện thoại (DNIS)</div></div>
+      <div class="view-item"><div class="vname" style="color:var(--accent)">MailView</div><div class="vdesc">Nhật ký email đến/đi</div></div>
+      <div class="view-item"><div class="vname" style="color:var(--accent2)">CoordinationsView</div><div class="vdesc">Log phối hợp với đơn vị khác</div></div>
+      <div class="view-item"><div class="vname" style="color:var(--accent3)">MeetingsView</div><div class="vdesc">Lịch họp, biên bản cuộc họp</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<p class="section-heading">Tính năng</p>
+<div class="grid two">
+  <div class="card">
+    <div class="card-title"><span>✅</span> Tính năng nghiệp vụ</div>
+    <div class="feature-list">
+      <div class="feature"><div class="dot blue"></div><div><strong>Quản lý hồ sơ</strong> – Tạo, sửa, lưu trữ công việc với phân loại (CHUYỂN ĐỔI SỐ, TRIỂN KHAI, DNIS, MAIL…)</div></div>
+      <div class="feature"><div class="dot purple"></div><div><strong>Ghi nhật ký đa loại</strong> – Điện thoại (DNIS), Email, Phối hợp, Cuộc họp</div></div>
+      <div class="feature"><div class="dot green"></div><div><strong>Kế hoạch tuần</strong> – Lịch dạng calendar, sắp xếp công việc vào ngày</div></div>
+      <div class="feature"><div class="dot orange"></div><div><strong>Pomodoro Timer</strong> – Đếm giờ tập trung với thời gian tùy chỉnh</div></div>
+      <div class="feature"><div class="dot pink"></div><div><strong>Tìm kiếm &amp; lọc</strong> – Full-text search, lọc theo loại, trạng thái, ưu tiên</div></div>
+      <div class="feature"><div class="dot blue"></div><div><strong>Focus Mode</strong> – Ẩn sidebar, hỗ trợ dark/light theme</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🔧</span> Tính năng kỹ thuật</div>
+    <div class="feature-list">
+      <div class="feature"><div class="dot green"></div><div><strong>Cloud Sync</strong> – Backup/restore lên Google Drive qua OAuth2</div></div>
+      <div class="feature"><div class="dot orange"></div><div><strong>localStorage</strong> – Lưu dữ liệu trên trình duyệt, không cần server DB</div></div>
+      <div class="feature"><div class="dot blue"></div><div><strong>XLSX Export</strong> – Xuất dữ liệu ra file Excel qua SheetJS</div></div>
+      <div class="feature"><div class="dot purple"></div><div><strong>File Explorer</strong> – Mở thư mục Windows từ trình duyệt qua Node.js server (port 3001)</div></div>
+      <div class="feature"><div class="dot pink"></div><div><strong>Folder Search</strong> – Tìm thư mục đệ quy từ <code>D:\</code></div></div>
+      <div class="feature"><div class="dot green"></div><div><strong>Import JSON</strong> – Import hồ sơ hàng loạt theo template</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DATA FLOW -->
+<p class="section-heading">Luồng dữ liệu</p>
+<div class="grid wide">
+  <div class="card">
+    <div class="card-title"><span>🔄</span> Data Flow</div>
+
+    <div style="margin-bottom:8px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px">Luồng chính (persistence)</div>
+    <div class="flow">
+      <div class="flow-step" style="border-color:var(--accent);color:var(--accent)">Người dùng</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">React State<br><span style="font-weight:400;font-size:11px;color:var(--muted)">App.jsx (hooks)</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--accent3);color:var(--accent3)">localStorage<br><span style="font-weight:400;font-size:11px">browser</span></div>
+      <div class="flow-arrow">⇄</div>
+      <div class="flow-step" style="border-color:var(--accent5);color:var(--accent5)">Google Drive<br><span style="font-weight:400;font-size:11px">cloud backup</span></div>
+    </div>
+
+    <div style="margin:16px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px">Luồng mở file (Windows)</div>
+    <div class="flow">
+      <div class="flow-step" style="border-color:var(--accent);color:var(--accent)">Button click</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">fetch localhost:3001</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--accent4);color:var(--accent4)">server.js<br><span style="font-weight:400;font-size:11px">Node.js</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">explorer.exe</div>
+    </div>
+
+    <div style="margin:16px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px">Luồng render</div>
+    <div class="flow">
+      <div class="flow-step">index.html</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--accent3);color:var(--accent3)">main.jsx<br><span style="font-weight:400;font-size:11px">ReactDOM.render</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">App.jsx<br><span style="font-weight:400;font-size:11px">state &amp; routing</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">views/ &amp; components/</div>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS & API -->
+<p class="section-heading">npm Scripts &amp; Server API</p>
+<div class="grid two">
+  <div class="card">
+    <div class="card-title"><span>▶️</span> npm Scripts</div>
+    <table>
+      <thead><tr><th>Script</th><th>Lệnh</th><th>Mô tả</th></tr></thead>
+      <tbody>
+        <tr><td><code>npm run dev</code></td><td>vite</td><td>Dev server (hot reload)</td></tr>
+        <tr><td><code>npm run server</code></td><td>node server.js</td><td>File-opener server :3001</td></tr>
+        <tr><td><code>npm start</code></td><td>concurrently</td><td>Chạy cả 2 cùng lúc</td></tr>
+        <tr><td><code>npm run build</code></td><td>vite build</td><td>Build ra <code>dist/</code></td></tr>
+        <tr><td><code>npm run deploy</code></td><td>gh-pages</td><td>Deploy lên GitHub Pages</td></tr>
+        <tr><td><code>npm run preview</code></td><td>vite preview</td><td>Preview bản build</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🌐</span> Node.js Server API <span class="badge blue" style="margin-left:auto">localhost:3001</span></div>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="ep-path">/open</div>
+      <div class="ep-desc">Mở file/folder bằng Windows Explorer</div>
+    </div>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="ep-path">/find-folder</div>
+      <div class="ep-desc">Tìm thư mục đệ quy từ D:\</div>
+    </div>
+    <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted)">
+      CORS cho phép: <code>http://localhost:5173</code><br>
+      Chỉ chạy trên Windows (dùng <code>explorer.exe</code>)
+    </div>
+  </div>
+</div>
+
+<!-- STATE MAP -->
+<p class="section-heading">State chính trong App.jsx</p>
+<div class="grid wide">
+  <div class="card">
+    <div class="card-title"><span>🗄️</span> State Management (React hooks trong App.jsx)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+      <div class="tech-item"><div class="label">Hồ sơ công việc</div><div class="value" style="color:var(--accent)">dossiers[]</div></div>
+      <div class="tech-item"><div class="label">Nhật ký điện thoại</div><div class="value" style="color:var(--accent2)">dnisLogs[]</div></div>
+      <div class="tech-item"><div class="label">Nhật ký email</div><div class="value" style="color:var(--accent3)">mailLogs[]</div></div>
+      <div class="tech-item"><div class="label">Phối hợp</div><div class="value" style="color:var(--accent4)">coordinationLogs[]</div></div>
+      <div class="tech-item"><div class="label">Lịch họp</div><div class="value" style="color:var(--accent5)">meetings[]</div></div>
+      <div class="tech-item"><div class="label">Kế hoạch</div><div class="value" style="color:var(--accent)">schedules[]</div></div>
+      <div class="tech-item"><div class="label">View hiện tại</div><div class="value" style="color:var(--accent2)">currentView</div></div>
+      <div class="tech-item"><div class="label">Hồ sơ đang chọn</div><div class="value" style="color:var(--accent3)">selectedDossier</div></div>
+    </div>
+    <div style="margin-top:12px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.7">
+      Toàn bộ state được lưu vào <code>localStorage</code> mỗi khi thay đổi.<br>
+      Google Drive sync dùng <strong>driveSync.js</strong> để backup/restore toàn bộ state dưới dạng JSON.
+    </div>
+  </div>
+</div>
+
+<!-- DEPLOYMENT -->
+<p class="section-heading">Deployment</p>
+<div class="grid wide">
+  <div class="card">
+    <div class="card-title"><span>🚀</span> Deploy pipeline</div>
+    <div class="flow">
+      <div class="flow-step"><code>npm run build</code><br><span style="font-weight:400;font-size:11px;color:var(--muted)">Vite → dist/</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><code>npm run deploy</code><br><span style="font-weight:400;font-size:11px;color:var(--muted)">gh-pages</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--accent3);color:var(--accent3)">GitHub Pages<br><span style="font-weight:400;font-size:11px">lyannha2312.github.io/qlcv/</span></div>
+    </div>
+    <div style="margin-top:12px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted)">
+      <strong style="color:var(--accent4)">Lưu ý:</strong> Node.js server (<code>server.js</code>) chỉ chạy local. Khi deploy lên GitHub Pages, tính năng mở thư mục Windows sẽ không hoạt động.
+    </div>
+  </div>
+</div>
+
+<hr>
+<div style="text-align:center;color:var(--muted);font-size:12px;padding-top:8px">
+  Tài liệu được tạo bởi Claude Code &nbsp;•&nbsp; d:\_QLCV
+</div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  const isLight = localStorage.getItem('qlcv-theme') === 'light';
+  if (isLight) { document.documentElement.classList.add('light'); btn.textContent = '🌙 Tối'; }
+  function toggleTheme() {
+    const light = document.documentElement.classList.toggle('light');
+    btn.textContent = light ? '🌙 Tối' : '☀️ Sáng';
+    localStorage.setItem('qlcv-theme', light ? 'light' : 'dark');
+  }
+</script>
+</body>
+</html>

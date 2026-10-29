@@ -1,0 +1,25 @@
+{
+    "type": "import_dossiers",
+    "dossiers": [
+        {
+            "id": "THAY_ID_NGAU_NHIEN",
+            "status": "active",
+            "title": "Tên hồ sơ / Chủ đề công việc",
+            "category": "CHUYỂN ĐỔI SỐ",
+            "priority": "Trung bình",
+            "deadline": "2026-06-30",
+            "createdAt": "2026-06-14T00:00:00.000Z",
+            "folderPath": "",
+            "originalDoc": {
+                "number": "123/ABC-ĐV",
+                "date": "2026-06-01",
+                "summary": "Trích yếu văn bản gốc",
+                "sender": "Đơn vị gửi",
+                "content": "Nội dung chỉ đạo chi tiết"
+            },
+            "relatedDocs": [],
+            "tasks": [],
+            "finalResult": ""
+        }
+    ]
+}
