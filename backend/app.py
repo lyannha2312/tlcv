@@ -133,6 +133,11 @@ BACKUP_DIR = os.path.join(BASE_DIR, "backups")
 
 JSON_PATH = os.path.join(BASE_DIR, "dossiers.json")
 
+# data.json giữ các nhóm dữ liệu ngoài hồ sơ (hồ sơ vẫn nằm ở dossiers.json).
+# Tên nhóm khớp với payload của nút "Lưu lên Drive" (QLCV_Cloud_Backup.json).
+DATA_PATH = os.path.join(BASE_DIR, "data.json")
+DATA_COLLECTIONS = ["dnisLogs", "mailLogs", "coordLogs", "schedules", "meetings"]
+
 
 class ExcelLockedException(Exception):
     pass
@@ -281,6 +286,70 @@ def save_dossiers(dossiers):
             except Exception:
                 pass
         raise Exception(f"Không thể ghi file JSON: {e}")
+
+
+def load_data():
+    """Đọc data.json; thiếu file hoặc thiếu nhóm nào thì trả về danh sách rỗng cho nhóm đó."""
+    import json
+    data = {}
+    if os.path.exists(DATA_PATH):
+        try:
+            with open(DATA_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            # Không trả rỗng âm thầm: lần ghi sau sẽ đè mất dữ liệu đang có trong file hỏng.
+            raise Exception(f"Không đọc được data.json: {e}")
+    return {name: data.get(name) if isinstance(data.get(name), list) else [] for name in DATA_COLLECTIONS}
+
+
+def save_data(data):
+    import json
+    if os.path.exists(DATA_PATH):
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        try:
+            shutil.copy2(DATA_PATH, os.path.join(BACKUP_DIR, f"data_{timestamp}.json"))
+            backups = sorted(
+                [os.path.join(BACKUP_DIR, f) for f in os.listdir(BACKUP_DIR) if f.startswith("data_") and f.endswith(".json")],
+                key=os.path.getmtime
+            )
+            while len(backups) > 10:
+                os.remove(backups.pop(0))
+        except Exception as e:
+            print(f"Warning: Could not back up data.json: {e}")
+
+    payload = {"version": 2}
+    payload.update({name: data.get(name, []) for name in DATA_COLLECTIONS})
+    temp_path = DATA_PATH + ".tmp"
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=4)
+        os.replace(temp_path, DATA_PATH)
+    except Exception as e:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+        raise Exception(f"Không thể ghi file data.json: {e}")
+
+
+def merge_by_id(current, incoming, prepend=False):
+    """Gộp theo id như mergeById ở frontend: mục trùng id được cập nhật, mục mới được thêm, mục cũ không bị xóa."""
+    inc_map = {x["id"]: x for x in incoming if isinstance(x, dict) and x.get("id")}
+    cur_ids = {x.get("id") for x in current if isinstance(x, dict)}
+    updated = 0
+    merged = []
+    for item in current:
+        other = inc_map.get(item.get("id")) if isinstance(item, dict) else None
+        if other is not None:
+            updated += 1
+            merged.append({**item, **other})
+        else:
+            merged.append(item)
+    new_items = [x for x in incoming if not (isinstance(x, dict) and x.get("id") and x["id"] in cur_ids)]
+    items = new_items + merged if prepend else merged + new_items
+    return items, {"added": len(new_items), "updated": updated, "kept": len(current) - updated}
 
 
 def dossier_to_excel_record(d):
@@ -930,6 +999,52 @@ def api_timeline_details(key):
         "id": target_dossier.get("id"),
         "events": events
     })
+
+
+@app.route("/api/data", methods=["GET"])
+def api_data_get():
+    try:
+        return jsonify(load_data())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/data/<name>", methods=["PUT"])
+def api_data_put(name):
+    """Thay toàn bộ một nhóm (dnisLogs, mailLogs, ...) bằng danh sách gửi lên."""
+    if name not in DATA_COLLECTIONS:
+        return jsonify({"error": f"Nhóm dữ liệu không hợp lệ: {name}"}), 404
+    items = request.get_json(silent=True)
+    if not isinstance(items, list) or not all(isinstance(x, dict) for x in items):
+        return jsonify({"error": "Dữ liệu gửi lên phải là danh sách các đối tượng JSON."}), 400
+    try:
+        data = load_data()
+        data[name] = items
+        save_data(data)
+        return jsonify({"ok": True, "count": len(items)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/data/import", methods=["POST"])
+def api_data_import():
+    """Gộp các nhóm dữ liệu từ một file Backup_QLCV / QLCV_Cloud_Backup.json theo id, không ghi đè mục đang có."""
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "File sao lưu không hợp lệ."}), 400
+    try:
+        data = load_data()
+        stats = {}
+        for name in DATA_COLLECTIONS:
+            incoming = body.get(name)
+            if not isinstance(incoming, list):
+                continue
+            # Danh sách hiển thị mục mới nhất ở đầu nên mục mới phải chèn lên đầu.
+            data[name], stats[name] = merge_by_id(data[name], incoming, prepend=True)
+        save_data(data)
+        return jsonify({"ok": True, "stats": stats})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/static/ho-so/<path:subpath>")
