@@ -370,15 +370,21 @@ git push -u origin main</pre></div>
   <h3>3.4. Kiểm tra</h3>
   <p>Tải lại trang kho trên GitHub: phải thấy thư mục <code>backend</code>, <code>frontend</code>, file <code>README.md</code>, biểu tượng ổ khóa cạnh tên kho (Private) và <em>không</em> thấy <code>backend/static/ho-so</code>.</p>
 
-  <h3>3.5. Về bản GitHub Pages (chỉ xem)</h3>
-  <p>README giữ lại bản GitHub Pages để xem hồ sơ, nhiệm vụ. Lệnh <code>npm run deploy</code> hiện đẩy thư mục <code>dist</code> lên nhánh <code>gh-pages</code> của kho <code>lyannha2312/qlcv</code>.</p>
+  <h3>3.5. Bản web GitHub Pages: địa chỉ mới <code>lyannha2312.github.io/tlcv/</code></h3>
+  <p>Bản web chỉ xem hồ sơ, nhiệm vụ được phục vụ từ chính kho <code>tlcv</code> (nhánh <code>gh-pages</code>). <code>package.json</code> và <code>vite.config.js</code> đã trỏ sang <code>tlcv</code>. Kho <code>qlcv</code> cũ không còn dùng nữa.</p>
   <div class="warn">
     <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 17.5v.01"/></svg>
     <div>
-      <p>GitHub Pages của tài khoản miễn phí chỉ phục vụ từ kho <strong>public</strong>, và mọi thứ trong bản build (kể cả mật khẩu <code>APP_PASSWORD</code> ở <code>security.js</code>) đọc được bằng trình duyệt. Vì thế giữ <em>hai kho riêng</em>: kho mã nguồn <code>qlcv-merged</code> (private) và kho <code>qlcv</code> chỉ chứa bản build (public). Mật khẩu đó chỉ là chốt chặn thao tác nhầm, không phải bảo mật thật.</p>
+      <p>GitHub Pages của tài khoản miễn phí chỉ chạy từ kho <strong>công khai</strong>, nên kho <code>tlcv</code> phải để <strong>Public</strong>. Mã nguồn sẽ đọc được công khai, kể cả mật khẩu <code>APP_PASSWORD</code> trong <code>security.js</code> (vốn đã nằm sẵn trong bản web, chỉ là chốt chặn thao tác nhầm, không phải bảo mật thật). Hồ sơ, <code>dossiers.json</code>, các bản sao lưu và <code>config.json</code> không lên GitHub nhờ <code>.gitignore</code>. Không bao giờ commit file <code>client_secret*.json</code>.</p>
     </div>
   </div>
-  <p>Khi muốn cập nhật bản Pages: chạy <code>npm run deploy</code> trong <code>frontend</code>, rồi vào kho <code>qlcv</code> → <strong>Settings → Pages</strong>, mục <em>Source</em> chọn <em>Deploy from a branch</em>, nhánh <code>gh-pages</code>, thư mục <code>/ (root)</code>. Lưu ý: bản build cho Flask sẽ cần <code>base</code> khác (<code>vite.config.js</code> hiện là <code>/qlcv/</code>); Claude sẽ tách hai chế độ build ở bước 4 của README.</p>
+  <ol class="steps">
+    <li><strong>Đổi kho sang Public</strong>: <code>github.com/lyannha2312/tlcv</code> → <strong>Settings</strong> → kéo xuống <strong>Danger Zone</strong> → <strong>Change repository visibility</strong> → <strong>Make public</strong>, nhập tên kho để xác nhận.</li>
+    <li><strong>Build và đẩy bản web</strong>: <code>cd D:\_QLCV_Merged\frontend</code>, <code>npm install</code> (lần đầu), rồi <code>npm run deploy</code>.</li>
+    <li><strong>Bật Pages</strong>: kho <code>tlcv</code> → <strong>Settings → Pages</strong> → <em>Source</em>: <em>Deploy from a branch</em> → nhánh <code>gh-pages</code>, thư mục <code>/ (root)</code> → <strong>Save</strong>.</li>
+    <li><strong>Mở</strong> <code>https://lyannha2312.github.io/tlcv/</code> (chờ 1–2 phút sau khi Save).</li>
+  </ol>
+  <p>Origin <code>https://lyannha2312.github.io</code> đã khai báo ở Google Cloud, nên nút "Lưu lên / Tải từ Drive" dùng được ngay. Bản build cho Flask sẽ cần <code>base</code> khác (<code>/</code>); Claude sẽ tách hai chế độ build ở bước 4 của README.</p>
 </section>
 
 <section class="module part" id="p4">

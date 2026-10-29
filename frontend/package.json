@@ -2,7 +2,7 @@
   "name": "qlcv-app",
   "private": true,
   "version": "1.0.0",
-  "homepage": "https://lyannha2312.github.io/qlcv/",
+  "homepage": "https://lyannha2312.github.io/tlcv/",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist --repo https://github.com/lyannha2312/qlcv.git"
+    "deploy": "gh-pages -d dist --repo https://github.com/lyannha2312/tlcv.git"
   },
   "dependencies": {
     "react": "^18.2.0",
