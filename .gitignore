@@ -19,3 +19,8 @@ __pycache__/
 
 # Khoá OAuth tải từ Google Cloud — tuyệt đối không commit
 client_secret*.json
+
+# Báo cáo gộp hồ sơ (chứa tiêu đề hồ sơ thật)
+backend/bao_cao_lech.html
+backend/quyet_dinh*.json
+backend/dossiers_gop_*.json
