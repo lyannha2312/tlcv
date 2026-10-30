@@ -24,3 +24,6 @@ client_secret*.json
 backend/bao_cao_lech.html
 backend/quyet_dinh*.json
 backend/dossiers_gop_*.json
+
+# Bản build giao diện QLCV cho Flask (tạo lại bằng npm run build:flask)
+backend/qlcv_dist/

@@ -9,6 +9,7 @@
     "server": "node server.js",
     "start": "concurrently \"vite\" \"node server.js\"",
     "build": "vite build",
+    "build:flask": "vite build --base=/ --outDir ../backend/qlcv_dist --emptyOutDir",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist --repo https://github.com/lyannha2312/tlcv.git"

@@ -10,10 +10,10 @@ const CoordinationsView = ({
         <div className="max-w-6xl mx-auto pb-10">
             <div className="mb-8 border-b border-slate-200 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-orange-700 flex items-center gap-2"><IconBriefcase /> Nhiệm Vụ Phối Hợp</h2>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><IconBriefcase className="text-brand-600 w-5 h-5"/> Nhiệm Vụ Phối Hợp</h2>
                     <p className="text-sm text-slate-500 mt-1">Theo dõi chung tiến độ các nhiệm vụ được giao phối hợp thực hiện.</p>
                 </div>
-                <button onClick={() => setCoordLogModalConfig({ isOpen: true, data: null })} className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-md flex items-center gap-2"><IconPlus /> Thêm Nhiệm Vụ Mới</button>
+                <button onClick={() => setCoordLogModalConfig({ isOpen: true, data: null })} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2"><IconPlus className="w-4 h-4"/> Thêm Nhiệm Vụ Mới</button>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-12">

@@ -131,6 +131,9 @@ DATA_SHEET_NAME = "Danh_Muc_Ho_So"
 
 BACKUP_DIR = os.path.join(BASE_DIR, "backups")
 
+# Bản build của giao diện QLCV (tạo bằng `npm run build:flask` trong thư mục frontend).
+QLCV_DIST_DIR = os.path.join(BASE_DIR, "qlcv_dist")
+
 JSON_PATH = os.path.join(BASE_DIR, "dossiers.json")
 
 # data.json giữ các nhóm dữ liệu ngoài hồ sơ (hồ sơ vẫn nằm ở dossiers.json).
@@ -520,12 +523,58 @@ def ensure_category_dirs(base_folder):
 
 @app.route("/")
 def index():
+    """Giao diện QLCV (bản build của frontend). Chưa build thì hướng dẫn cách build."""
+    if os.path.isfile(os.path.join(QLCV_DIST_DIR, "index.html")):
+        return send_from_directory(QLCV_DIST_DIR, "index.html")
+    return (
+        "<meta charset='utf-8'><title>Chưa có giao diện QLCV</title>"
+        "<body style='font-family:sans-serif;max-width:640px;margin:48px auto;line-height:1.6'>"
+        "<h2>Chưa có giao diện QLCV</h2>"
+        "<p>Mở PowerShell, chạy trong thư mục <code>frontend</code>:</p>"
+        "<pre>npm install\nnpm run build:flask</pre>"
+        "<p>Rồi tải lại trang. Trong lúc chờ, vẫn dùng được <a href='/kho'>Kho hồ sơ</a>.</p></body>",
+        503,
+    )
+
+
+@app.route("/assets/<path:filename>")
+def qlcv_assets(filename):
+    return send_from_directory(os.path.join(QLCV_DIST_DIR, "assets"), filename)
+
+
+@app.route("/kho")
+def kho():
+    """Trang Kho hồ sơ (xem, tải file PDF). QLCV nhúng trang này ở tab "Kho tài liệu"."""
     return render_template(
         "index.html",
         linh_vuc_options=LINH_VUC_OPTIONS,
         trang_thai_options=TRANG_THAI_OPTIONS,
         categories=CATEGORIES,
     )
+
+
+@app.route("/api/dossiers", methods=["GET"])
+def api_dossiers_get():
+    """Danh sách hồ sơ dạng gốc (cùng cấu trúc QLCV dùng), khác /api/ho_so là dạng bản ghi Excel."""
+    return jsonify(load_dossiers())
+
+
+@app.route("/api/dossiers", methods=["PUT"])
+def api_dossiers_put():
+    """QLCV ghi cả danh sách hồ sơ. Không đổi tên/di chuyển thư mục tài liệu (việc đó do /api/ho_so/... làm)."""
+    items = request.get_json(silent=True)
+    if not isinstance(items, list) or not all(isinstance(x, dict) and x.get("id") for x in items):
+        return jsonify({"error": "Dữ liệu gửi lên phải là danh sách hồ sơ, mỗi hồ sơ có id."}), 400
+    if len({x["id"] for x in items}) != len(items):
+        return jsonify({"error": "Danh sách hồ sơ có id trùng nhau."}), 400
+    if not items and load_dossiers():
+        # Chặn ghi rỗng đè lên dữ liệu đang có (lỗi giao diện hoặc tải dữ liệu chưa xong).
+        return jsonify({"error": "Không ghi danh sách rỗng đè lên dữ liệu hiện có."}), 400
+    try:
+        save_dossiers(items)
+        return jsonify({"ok": True, "count": len(items)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/ho_so", methods=["GET"])
@@ -625,6 +674,19 @@ def api_open_root():
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": f"Không thể mở thư mục gốc: {e}"}), 500
+
+
+@app.route("/api/ho_so/<path:key>/files", methods=["GET"])
+def api_dossier_files(key):
+    """Danh sách file đính kèm của một hồ sơ, để giao diện QLCV hiện ngay trong hồ sơ."""
+    target_dossier = next((d for d in load_dossiers() if (d.get("folderPath") or d.get("folderName", "")) == key), None)
+    if not target_dossier:
+        return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
+    row = dossier_to_excel_record(target_dossier)
+    pdfs = list_pdfs_for_row(row)
+    for cat in CATEGORIES[:3]:
+        pdfs.setdefault(cat, [])
+    return jsonify({"categories": pdfs})
 
 
 @app.route("/api/ho_so/<path:key>/open_folder", methods=["POST"])

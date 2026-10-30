@@ -20,3 +20,13 @@ Chưa chép: `node_modules`, `dist`, `venv`, `test_venv` (cài lại bằng `npm
 
 ## Lưu ý
 - Khi chuyển `ho-so` lên Drive thật, copy thư mục này sang Drive, đừng trỏ thẳng vào thư mục gốc cũ để thử nghiệm.
+
+## Chạy bản gộp (Flask phục vụ QLCV + Kho hồ sơ)
+1. Build giao diện (làm lại mỗi khi sửa mã trong `frontend/`):
+   `cd frontend` → `npm install` (lần đầu) → `npm run build:flask` (ra `backend/qlcv_dist/`).
+2. Chạy `backend\Mo_KhoHoSo.bat`, mở `http://localhost:5001`.
+   - `/` là giao diện QLCV; trong từng hồ sơ (Bàn làm việc, Timeline) có khung "Tài liệu đính kèm" để xem/tải lên/xóa file và mở thư mục. `/kho` vẫn còn là trang Kho hồ sơ cũ để dự phòng.
+   - Khi chạy dưới Flask, QLCV lưu vào `dossiers.json` + `data.json`, không ghi `localStorage` nữa (bản cũ trong trình duyệt giữ nguyên làm dự phòng).
+   - Mở bằng GitHub Pages hoặc `npm run dev` thì vẫn lưu bằng `localStorage` như trước.
+3. Bản GitHub Pages: `npm run deploy` (build với `base=/tlcv/`).
+

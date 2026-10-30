@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CATEGORIES, ISSUING_UNITS, getLocalDateTimeString, getDateRange } from '../helpers.js';
+import { useDossierFiles } from './DossierFiles.jsx';
 
 // ---- DossierForm ----
 export const DossierForm = ({ initialData, onClose, saveDossier }) => {
@@ -46,7 +47,8 @@ export const DossierForm = ({ initialData, onClose, saveDossier }) => {
 };
 
 // ---- AddDocForm ----
-export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRelatedDoc, updateFinalResult, setActiveDossierId }) => {
+export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRelatedDoc, updateFinalResult, setActiveDossierId, folderPath, serverMode }) => {
+    const storedFiles = useDossierFiles(serverMode === true && folderPath ? folderPath : null);
     const [activeTab, setActiveTab] = useState(initialData ? initialData.type : 'document');
     const [docForm, setDocForm] = useState(() => {
         if (initialData && initialData.type === 'document') return { number: initialData.number || '', date: initialData.date || '', sender: initialData.sender || '', content: initialData.content || '', fileName: initialData.fileName || '', note: initialData.note || '', docType: initialData.docType || 'Văn bản đính kèm', filePath: initialData.filePath || '' };
@@ -94,6 +96,17 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
                         </div>
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung / Trích yếu</label><textarea rows="2" value={docForm.content} onChange={e=>setDocForm({...docForm, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
                         <div><label className="block text-sm font-medium text-amber-600 mb-1">Ghi chú (Mục đích)</label><textarea rows="2" value={docForm.note} onChange={e=>setDocForm({...docForm, note: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
+                        {storedFiles.categories && (
+                            <div><label className="block text-sm font-medium text-slate-700 mb-1">File trong kho hồ sơ <span className="text-xs font-normal text-slate-400">(để xem ngay ở mốc này trên timeline)</span></label>
+                                <select value={docForm.fileName} onChange={e=>setDocForm({...docForm, fileName: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500 text-sm">
+                                    <option value="">— Không gắn file —</option>
+                                    {docForm.fileName && !Object.values(storedFiles.categories).flat().some(f => f.fileName === docForm.fileName) && <option value={docForm.fileName}>{docForm.fileName} (không còn trong kho)</option>}
+                                    {Object.entries(storedFiles.categories).map(([cat, list]) => list.length > 0 && (
+                                        <optgroup key={cat} label={cat}>{list.map(f => <option key={f.fileName} value={f.fileName}>{f.fileName}</option>)}</optgroup>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Đường dẫn file</label><input type="text" value={docForm.filePath} onChange={e=>setDocForm({...docForm, filePath: e.target.value})} placeholder="VD: D:\HoSo\2026\VanBan.docx" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500 font-mono text-sm" /></div>
                     </>
                 )}

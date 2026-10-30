@@ -18,10 +18,10 @@ const DnisView = ({
         <div className="max-w-6xl mx-auto pb-10">
             <div className="mb-8 border-b border-slate-200 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-fuchsia-700 flex items-center gap-2"><IconDatabase /> Chuyên Đề DNIS</h2>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><IconDatabase className="text-brand-600 w-5 h-5"/> Chuyên Đề DNIS</h2>
                     <p className="text-sm text-slate-500 mt-1">Quản lý các yêu cầu, liên hệ và hồ sơ liên quan đến Hệ thống DNIS.</p>
                 </div>
-                <button onClick={() => setDnisLogModalConfig({ isOpen: true, data: null })} className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-md flex items-center gap-2"><IconPlus /> Thêm Nhật Ký Mới</button>
+                <button onClick={() => setDnisLogModalConfig({ isOpen: true, data: null })} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2"><IconPlus className="w-4 h-4"/> Thêm Nhật Ký Mới</button>
             </div>
 
             <h3 className="text-lg font-bold text-slate-800 mb-4">Nhật Ký Theo Dõi & Yêu Cầu</h3>

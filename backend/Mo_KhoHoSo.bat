@@ -75,6 +75,9 @@ goto :VENV_ACTIVE
 call venv\Scripts\activate.bat
 
 :VENV_ACTIVE
+if not exist "qlcv_dist\index.html" (
+    echo [LUU Y] Chua co giao dien QLCV. Chay trong thu muc frontend: npm run build:flask
+)
 echo Dang khoi dong ung dung...
 python app.py
 

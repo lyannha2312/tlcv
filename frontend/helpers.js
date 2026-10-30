@@ -36,15 +36,15 @@ export const getDayName = (dateStr) => {
 };
 
 export const CATEGORY_COLORS = {
-    'CHUYỂN ĐỔI SỐ': { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', icon: 'text-blue-500', solid: 'bg-blue-600' },
-    'TRIỂN KHAI': { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', icon: 'text-emerald-500', solid: 'bg-emerald-600' },
-    'KHUNG KIẾN TRÚC': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200', icon: 'text-indigo-500', solid: 'bg-indigo-600' },
-    'DNIS': { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', border: 'border-fuchsia-200', icon: 'text-fuchsia-500', solid: 'bg-fuchsia-600' },
-    'MAIL CÔNG VỤ': { bg: 'bg-cyan-100', text: 'text-cyan-700', border: 'border-cyan-200', icon: 'text-cyan-500', solid: 'bg-cyan-600' },
-    'GÓP Ý': { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200', icon: 'text-amber-500', solid: 'bg-amber-500' },
-    'TRÍ TUỆ NHÂN TẠO AI': { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-200', icon: 'text-violet-500', solid: 'bg-violet-600' },
-    'ĐẢNG': { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-200', icon: 'text-rose-500', solid: 'bg-rose-600' },
-    'KHÁC': { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', solid: 'bg-slate-500' },
+    'CHUYỂN ĐỔI SỐ': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-blue-500', solid: 'bg-slate-300' },
+    'TRIỂN KHAI': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-emerald-500', solid: 'bg-slate-300' },
+    'KHUNG KIẾN TRÚC': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-indigo-500', solid: 'bg-slate-300' },
+    'DNIS': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-fuchsia-500', solid: 'bg-slate-300' },
+    'MAIL CÔNG VỤ': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-cyan-500', solid: 'bg-slate-300' },
+    'GÓP Ý': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-amber-500', solid: 'bg-slate-300' },
+    'TRÍ TUỆ NHÂN TẠO AI': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-violet-500', solid: 'bg-slate-300' },
+    'ĐẢNG': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-rose-500', solid: 'bg-slate-300' },
+    'KHÁC': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-500', dot: 'bg-slate-400', solid: 'bg-slate-300' },
 };
 
 export const CATEGORIES = Object.keys(CATEGORY_COLORS);

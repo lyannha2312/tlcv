@@ -10,11 +10,12 @@ import {
     IconFolder, IconClock, IconCheckCircle, IconPlus, IconArchive,
     IconPlay, IconSquare, IconSearch, IconSave, IconUpload,
     IconDatabase, IconMail, IconBriefcase, IconCalendar, IconUsers,
-    IconMaximize, IconMinimize, IconSun, IconMoon, IconEdit
+    IconMaximize, IconMinimize, IconSun, IconMoon, IconEdit, IconFileText
 } from './Icons.jsx';
 
 // Components
 import Modal from './components/Modal.jsx';
+import DossierTree from './components/DossierTree.jsx';
 import { DossierForm, AddDocForm, DnisLogForm, MailLogForm, CoordLogForm, ScheduleForm, MeetingForm } from './components/Forms.jsx';
 
 // Views
@@ -27,7 +28,20 @@ import MeetingsView from './views/MeetingsView.jsx';
 import PlannerView from './views/PlannerView.jsx';
 import DetailView from './views/DetailView.jsx';
 import { initGoogleAuth, loginAndSync, uploadToDrive, downloadFromDrive } from './driveSync.js';
+import { detectBackend, loadServerData, saveCollection } from './serverSync.js';
 import { APP_PASSWORD } from './security.js';
+
+const NAV_ITEMS = [
+    { view: 'workspace', label: 'Bàn làm việc', Icon: IconFolder, on: 'bg-brand-50 text-brand-700 font-semibold' },
+    { view: 'archive', label: 'Kho hồ sơ', Icon: IconArchive, on: 'bg-brand-50 text-brand-700 font-semibold' },
+    { view: 'dnis', label: 'DNIS', Icon: IconDatabase, on: 'bg-brand-50 text-brand-700 font-semibold' },
+    { view: 'mail', label: 'Mail công vụ', Icon: IconMail, on: 'bg-brand-50 text-brand-700 font-semibold' },
+    { view: 'coordinations', label: 'Phối hợp', Icon: IconBriefcase, on: 'bg-brand-50 text-brand-700 font-semibold' },
+    { view: 'meetings', label: 'Cuộc họp', Icon: IconUsers, on: 'bg-brand-50 text-brand-700 font-semibold' },
+    { view: 'planner', label: 'Kế hoạch tuần', Icon: IconCalendar, on: 'bg-brand-50 text-brand-700 font-semibold' },
+];
+// Các màn hình làm việc với hồ sơ: hiện danh sách hồ sơ dạng cây bên trái.
+const DOSSIER_VIEWS = ['workspace', 'archive', 'detail'];
 
 const App = () => {
     // Notifications State
@@ -90,6 +104,17 @@ const App = () => {
 
     // UI State
     const [currentView, setCurrentView] = useState('workspace');
+    const [treeOpen, setTreeOpen] = useState(true);
+    // Màn hình timeline cần chỗ cho khung đọc file: cửa sổ hẹp thì tự thu gọn danh sách hồ sơ, rời đi thì mở lại.
+    const treeAutoCollapsed = useRef(false);
+    useEffect(() => {
+        if (currentView === 'detail' && window.innerWidth < 1536) {
+            setTreeOpen(prev => { if (prev) treeAutoCollapsed.current = true; return false; });
+        } else if (treeAutoCollapsed.current) {
+            treeAutoCollapsed.current = false;
+            setTreeOpen(true);
+        }
+    }, [currentView]);
     const [activeDossierId, setActiveDossierId] = useState(null);
     const [focusMode, setFocusMode] = useState(false);
     const [focusDark, setFocusDark] = useState(false);
@@ -115,13 +140,62 @@ const App = () => {
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
-    // Auto-save
-    useEffect(() => localStorage.setItem('hoso_data_light_v4', JSON.stringify(dossiers)), [dossiers]);
-    useEffect(() => localStorage.setItem('hoso_data_light_dnis_logs_v4', JSON.stringify(dnisLogs)), [dnisLogs]);
-    useEffect(() => localStorage.setItem('hoso_data_light_mail_logs_v4', JSON.stringify(mailLogs)), [mailLogs]);
-    useEffect(() => localStorage.setItem('hoso_data_light_coord_logs_v4', JSON.stringify(coordLogs)), [coordLogs]);
-    useEffect(() => localStorage.setItem('hoso_data_light_schedules_v4', JSON.stringify(schedules)), [schedules]);
-    useEffect(() => localStorage.setItem('hoso_data_light_meetings_v4', JSON.stringify(meetings)), [meetings]);
+    // Nơi lưu dữ liệu: null = đang kiểm tra, true = Flask (dossiers.json + data.json), false = localStorage của trình duyệt.
+    // Khi dùng Flask, localStorage không được ghi nữa nên bản cũ trong trình duyệt còn nguyên làm dự phòng.
+    const [serverMode, setServerMode] = useState(null);
+    const lastSyncedRef = useRef({});
+    const syncTimersRef = useRef({});
+
+    // Auto-save (localStorage)
+    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_v4', JSON.stringify(dossiers)); }, [dossiers, serverMode]);
+    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_dnis_logs_v4', JSON.stringify(dnisLogs)); }, [dnisLogs, serverMode]);
+    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_mail_logs_v4', JSON.stringify(mailLogs)); }, [mailLogs, serverMode]);
+    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_coord_logs_v4', JSON.stringify(coordLogs)); }, [coordLogs, serverMode]);
+    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_schedules_v4', JSON.stringify(schedules)); }, [schedules, serverMode]);
+    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_meetings_v4', JSON.stringify(meetings)); }, [meetings, serverMode]);
+
+    // Khi chạy dưới Flask: nạp dữ liệu từ máy chủ một lần lúc mở trang.
+    useEffect(() => {
+        (async () => {
+            if (!(await detectBackend())) { setServerMode(false); return; }
+            try {
+                const s = await loadServerData();
+                // Máy chủ còn trống mà trình duyệt có dữ liệu: lấy dữ liệu trình duyệt làm bản khởi tạo (sẽ được ghi lên máy chủ).
+                const pick = (name, local) => (s[name].length === 0 && local.length > 0 ? local : s[name]);
+                lastSyncedRef.current = Object.fromEntries(Object.keys(s).map(k => [k, JSON.stringify(s[k])]));
+                setDossiers(pick('dossiers', dossiers));
+                setDnisLogs(pick('dnisLogs', dnisLogs));
+                setMailLogs(pick('mailLogs', mailLogs));
+                setCoordLogs(pick('coordLogs', coordLogs));
+                setSchedules(pick('schedules', schedules));
+                setMeetings(pick('meetings', meetings));
+                setServerMode(true);
+            } catch (e) {
+                showToast('Không nạp được dữ liệu từ máy chủ, dùng dữ liệu trong trình duyệt: ' + e.message);
+                setServerMode(false);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Auto-save (Flask): ghi nhóm nào vừa đổi, gom các thay đổi liên tiếp trong 0,6 giây.
+    useEffect(() => {
+        if (serverMode !== true) return;
+        const state = { dossiers, dnisLogs, mailLogs, coordLogs, schedules, meetings };
+        Object.entries(state).forEach(([name, items]) => {
+            const json = JSON.stringify(items);
+            if (lastSyncedRef.current[name] === json) return;
+            clearTimeout(syncTimersRef.current[name]);
+            syncTimersRef.current[name] = setTimeout(async () => {
+                try {
+                    await saveCollection(name, items);
+                    lastSyncedRef.current[name] = json;
+                } catch (e) {
+                    showToast('⚠️ Chưa lưu được lên máy chủ: ' + e.message);
+                }
+            }, 600);
+        });
+    }, [serverMode, dossiers, dnisLogs, mailLogs, coordLogs, schedules, meetings]);
 
     useEffect(() => {
         initGoogleAuth(); // Kích hoạt ngầm thư viện Google khi web tải xong
@@ -288,7 +362,7 @@ const App = () => {
         if (editId) {
             // Sửa: giữ bản ghi gốc (ngày đầu), các ngày còn lại được nhân bản thêm
             const [firstDate, ...restDates] = dates;
-            const newItems = restDates.map(date => ({ id: generateId(), createdAt, ...scheduleData, id: generateId(), date }));
+            const newItems = restDates.map(date => ({ ...scheduleData, id: generateId(), createdAt, date }));
             setSchedules([...schedules.map(s => s.id === editId ? { ...s, ...scheduleData, date: firstDate } : s), ...newItems]);
             showToast(`Đã cập nhật kế hoạch và thêm cho ${newItems.length} ngày khác!`);
             return;
@@ -579,78 +653,44 @@ const App = () => {
     }
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden">
-            {/* Sidebar */}
-            <div className="w-64 bg-white border-r border-slate-200 flex flex-col hidden md:flex shrink-0 z-10">
-                <div className="p-4 border-b border-slate-100">
-                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-emerald-500 flex items-center gap-2"><IconCheckCircle /> QLCV của Lý</h1>
+        <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
+            {/* Thanh điều hướng trên cùng */}
+            <header className="bg-white border-b border-slate-200 shrink-0 z-20 flex items-center gap-3 px-3 md:px-4 h-14">
+                <div className="shrink-0">
+                    <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-emerald-500 flex items-center gap-1.5 leading-tight"><IconCheckCircle /> QLCV của Lý</h1>
+                    {serverMode === true && <div className="text-[10px] text-emerald-600 leading-none" title="Dữ liệu được lưu vào dossiers.json và data.json trên máy chạy Flask">● Đang lưu trên máy chủ</div>}
                 </div>
-                <div className="p-4 flex-1 overflow-y-auto">
-                    <div className="space-y-1 mb-8">
-                        <button onClick={() => setCurrentView('workspace')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${currentView === 'workspace' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}`}><IconFolder /> Bàn làm việc</button>
-                        <button onClick={() => setCurrentView('archive')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${currentView === 'archive' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}`}><IconArchive /> Kho Hồ sơ</button>
-                        <button onClick={() => setCurrentView('dnis')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${currentView === 'dnis' ? 'bg-fuchsia-50 text-fuchsia-700' : 'text-slate-600 hover:bg-slate-50'}`}><IconDatabase /> Chuyên đề DNIS</button>
-                        <button onClick={() => setCurrentView('mail')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${currentView === 'mail' ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:bg-slate-50'}`}><IconMail /> Mail Công vụ</button>
-                        <button onClick={() => setCurrentView('coordinations')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${currentView === 'coordinations' ? 'bg-orange-50 text-orange-700' : 'text-slate-600 hover:bg-slate-50'}`}><IconBriefcase /> Nhiệm vụ phối hợp</button>
-                        <button onClick={() => setCurrentView('meetings')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${currentView === 'meetings' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50'}`}><IconUsers /> Sổ tay Cuộc họp</button>
-                        <button onClick={() => setCurrentView('planner')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${currentView === 'planner' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><IconCalendar /> Sổ kế hoạch tuần</button>
-                    </div>
-                    <div className="mb-4 flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        <span>Hồ sơ đang xử lý</span>
-                        <span className="bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full border">{dossiers.filter(d=>d.status==='active').length}</span>
-                    </div>
-                    <div className="space-y-1">
-                        {dossiers.filter(d=>d.status==='active').sort((a, b) => {
-                            const pWeight = { 'Cao': 3, 'Trung bình': 2, 'Thấp': 1 };
-                            const wA = pWeight[a.priority || 'Trung bình'] || 0;
-                            const wB = pWeight[b.priority || 'Trung bình'] || 0;
-                            if (wA !== wB) return wB - wA;
-                            if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
-                            if (a.deadline) return -1; if (b.deadline) return 1;
-                            return new Date(b.createdAt) - new Date(a.createdAt);
-                        }).map(d => (
-                            <div key={d.id} className={`group flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${activeDossierId === d.id && currentView === 'workspace' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}>
-                                <div className="flex items-center gap-2 overflow-hidden flex-1" onClick={() => { setActiveDossierId(d.id); setCurrentView('workspace'); }} title={d.title}>
-                                    <span className={`w-2 h-2 rounded-full ${(CATEGORY_COLORS[d.category] || CATEGORY_COLORS['KHÁC']).solid} shrink-0`}></span>
-                                    <span className="truncate text-left flex items-center gap-1.5">{d.priority === 'Cao' && <span title="Ưu tiên cao" className="text-[10px] shrink-0">🔴</span>} {d.title}</span>
-                                </div>
-                                <button onClick={(e) => { e.stopPropagation(); setEditDossierConfig({isOpen:true, data:d}); }} className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-brand-600 shrink-0"><IconEdit className="w-3.5 h-3.5"/></button>
-                            </div>
-                        ))}
-                    </div>
+                <nav className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto">
+                    {NAV_ITEMS.map(({ view, label, Icon, on }) => {
+                        const current = currentView === 'detail' ? (activeDossier?.status === 'archived' ? 'archive' : 'workspace') : currentView;
+                        return (
+                            <button key={view} onClick={() => setCurrentView(view)} title={label}
+                                className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${current === view ? on : 'text-slate-600 hover:bg-slate-50'}`}>
+                                <Icon className="w-[18px] h-[18px]" /><span className="hidden xl:inline">{label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+                <div className="shrink-0 flex items-center gap-2">
+                    {DOSSIER_VIEWS.includes(currentView) && !treeOpen && (
+                        <button onClick={() => setTreeOpen(true)} title="Mở danh sách hồ sơ" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-50 border border-slate-200 rounded-lg"><IconFolder className="w-4 h-4" /><span className="hidden sm:inline">Danh sách hồ sơ</span></button>
+                    )}
+                    <button onClick={() => setIsSyncModalOpen(true)} title="Đồng bộ Google Drive, sao lưu, phục hồi, import" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-lg"><IconSave className="w-4 h-4" /><span className="hidden lg:inline">Đồng bộ & Sao lưu</span></button>
+                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-sm font-medium shadow-sm"><IconPlus className="w-4 h-4" /><span className="hidden lg:inline">Tạo hồ sơ</span></button>
                 </div>
-                <div className="p-4 border-t border-slate-100 space-y-3 bg-slate-50/50">
-                    <div className="flex gap-2">
-                        <button onClick={() => requirePassword(handleDriveUpload)} disabled={isDriveSyncing} className={`flex-1 py-2 rounded-lg text-xs font-medium shadow-sm transition-colors border ${isDriveSyncing ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-blue-50 border-blue-200 hover:bg-blue-100 text-blue-700'}`}>{isDriveSyncing ? '⏳ Đang xử lý...' : '☁️ Lưu lên Drive'}</button>
-                        <button onClick={handleDriveDownload} disabled={isDriveSyncing} className={`flex-1 py-2 rounded-lg text-xs font-medium shadow-sm transition-colors border ${isDriveSyncing ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 text-emerald-700'}`}>{isDriveSyncing ? '⏳ Đang xử lý...' : '⬇️ Tải từ Drive'}</button>
-                    </div>
-                    <div className="flex gap-2">
-                        <button onClick={() => requirePassword(handleBackup)} className="flex-1 flex justify-center items-center gap-2 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium shadow-sm"><IconSave className="w-4 h-4"/> Sao lưu</button>
-                        <label className="flex-1 flex justify-center items-center gap-2 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium shadow-sm cursor-pointer"><IconUpload className="w-4 h-4"/> Phục hồi<input type="file" accept=".json" onChange={(e) => requirePassword(() => handleRestore(e))} className="hidden" /></label>
-                    </div>
-                    <label className="w-full flex justify-center items-center gap-2 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium shadow-sm cursor-pointer" title="Thêm hồ sơ mới từ file JSON mà không xóa dữ liệu hiện tại"><IconPlus className="w-4 h-4"/> Import hồ sơ từ file<input type="file" accept=".json" onChange={(e) => requirePassword(() => handleImportDossier(e))} className="hidden" /></label>
-                    <button onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-sm font-medium shadow-md shadow-brand-500/20"><IconPlus /> Tạo Hồ sơ mới</button>
-                </div>
-            </div>
+            </header>
 
-            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-                {/* Mobile Header */}
-                <div className="md:hidden p-4 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-lg font-bold text-brand-600 flex items-center gap-1.5"><IconCheckCircle /> QLCV</h1>
-                        <button onClick={() => setIsSyncModalOpen(true)} className="p-1.5 text-slate-500 hover:text-brand-600 bg-slate-50 hover:bg-brand-50 rounded border border-slate-200" title="Đồng bộ & Sao lưu"><IconSave className="w-4 h-4"/></button>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto">
-                        <button onClick={() => setCurrentView('workspace')} className={`p-2 rounded shrink-0 ${currentView==='workspace'?'bg-slate-100 text-slate-900':'text-slate-500'}`}><IconFolder/></button>
-                        <button onClick={() => setCurrentView('archive')} className={`p-2 rounded shrink-0 ${currentView==='archive'?'bg-slate-100 text-slate-900':'text-slate-500'}`}><IconArchive/></button>
-                        <button onClick={() => setCurrentView('dnis')} className={`p-2 rounded shrink-0 ${currentView==='dnis'?'bg-fuchsia-100 text-fuchsia-700':'text-slate-500'}`}><IconDatabase/></button>
-                        <button onClick={() => setCurrentView('mail')} className={`p-2 rounded shrink-0 ${currentView==='mail'?'bg-cyan-100 text-cyan-700':'text-slate-500'}`}><IconMail/></button>
-                        <button onClick={() => setCurrentView('coordinations')} className={`p-2 rounded shrink-0 ${currentView==='coordinations'?'bg-orange-100 text-orange-700':'text-slate-500'}`}><IconBriefcase/></button>
-                        <button onClick={() => setCurrentView('meetings')} className={`p-2 rounded shrink-0 ${currentView==='meetings'?'bg-teal-100 text-teal-700':'text-slate-500'}`}><IconUsers/></button>
-                        <button onClick={() => setCurrentView('planner')} className={`p-2 rounded shrink-0 ${currentView==='planner'?'bg-indigo-100 text-indigo-700':'text-slate-500'}`}><IconCalendar/></button>
-                    </div>
-                </div>
-
+            <div className="flex-1 flex min-h-0 overflow-hidden">
+            {DOSSIER_VIEWS.includes(currentView) && treeOpen && (
+                <DossierTree
+                    dossiers={dossiers}
+                    activeDossierId={activeDossierId}
+                    onSelect={d => { setActiveDossierId(d.id); setCurrentView(d.status === 'active' ? 'workspace' : 'detail'); }}
+                    onEdit={d => setEditDossierConfig({ isOpen: true, data: d })}
+                    onCollapse={() => setTreeOpen(false)}
+                />
+            )}
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
                 {timerState.isRunning && !focusMode && (
                     <div className="bg-brand-600 text-white px-4 py-2 flex items-center justify-between shadow-md z-10 shrink-0">
                         <div className="flex items-center gap-3">
@@ -769,9 +809,13 @@ const App = () => {
                             reopenDossier={reopenDossier}
                             exportDossierToExcel={exportDossierToExcel}
                             exportDossierToJson={exportDossierToJson}
+                            treeOpen={treeOpen}
+                            serverMode={serverMode}
+                            showToast={showToast}
                         />
                     )}
                 </div>
+            </div>
             </div>
 
             {/* Modals */}
@@ -814,6 +858,8 @@ const App = () => {
                     saveRelatedDoc={saveRelatedDoc}
                     updateFinalResult={updateFinalResult}
                     setActiveDossierId={setActiveDossierId}
+                    serverMode={serverMode}
+                    folderPath={dossiers.find(d => d.id === (docModalConfig.dossierId || activeDossier?.id))?.folderPath}
                 />
             </Modal>
 

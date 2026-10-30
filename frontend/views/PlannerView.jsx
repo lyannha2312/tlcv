@@ -150,7 +150,7 @@ const PlannerView = ({
         <div className="max-w-5xl mx-auto pb-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl"><IconCalendar /></div>
+                    <div className="p-2 bg-brand-50 text-brand-600 rounded-lg"><IconCalendar className="w-5 h-5"/></div>
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800">Sổ Kế Hoạch Công Tác</h2>
                         <p className="text-sm text-slate-500 font-medium">Lịch làm việc tích hợp - đồng bộ tự động từ toàn hệ thống</p>

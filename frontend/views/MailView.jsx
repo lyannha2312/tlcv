@@ -15,10 +15,10 @@ const MailView = ({
         <div className="max-w-6xl mx-auto pb-10">
             <div className="mb-8 border-b border-slate-200 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-cyan-700 flex items-center gap-2"><IconMail /> Quản Lý Mail Công Vụ</h2>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><IconMail className="text-brand-600 w-5 h-5"/> Quản Lý Mail Công Vụ</h2>
                     <p className="text-sm text-slate-500 mt-1">Quản lý các yêu cầu, cấp phát, khôi phục mật khẩu và hỗ trợ Mail công vụ.</p>
                 </div>
-                <button onClick={() => setMailLogModalConfig({ isOpen: true, data: null })} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-md flex items-center gap-2"><IconPlus /> Thêm Yêu Cầu Mới</button>
+                <button onClick={() => setMailLogModalConfig({ isOpen: true, data: null })} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2"><IconPlus className="w-4 h-4"/> Thêm Yêu Cầu Mới</button>
             </div>
 
             <h3 className="text-lg font-bold text-slate-800 mb-4">Danh Sách Yêu Cầu Hỗ Trợ</h3>
