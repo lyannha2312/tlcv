@@ -38,3 +38,5 @@ backend/qlcv_dist_moi/
 frontend/.env
 frontend/.env.*
 *.local
+!.env.example
+!frontend/.env.example

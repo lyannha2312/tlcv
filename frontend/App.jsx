@@ -62,13 +62,13 @@ const App = () => {
         setPasswordGate({ isOpen: true, value: '', error: '' });
     };
     const confirmPasswordGate = () => {
-        if (passwordGate.value === APP_PASSWORD) {
+        if (APP_PASSWORD && passwordGate.value === APP_PASSWORD) {
             const action = pendingActionRef.current;
             pendingActionRef.current = null;
             setPasswordGate({ isOpen: false, value: '', error: '' });
             if (action) action();
         } else {
-            setPasswordGate(prev => ({ ...prev, value: '', error: 'Sai mật khẩu, vui lòng thử lại!' }));
+            setPasswordGate(prev => ({ ...prev, value: '', error: APP_PASSWORD ? 'Sai mật khẩu, vui lòng thử lại!' : 'Chưa cấu hình mật khẩu: đặt VITE_APP_PASSWORD trong frontend/.env.local rồi build lại.' }));
         }
     };
     const cancelPasswordGate = () => {
