@@ -1,38 +1,20 @@
-# Dữ liệu và hồ sơ nội bộ — KHÔNG đưa lên GitHub
+# === Dữ liệu và hồ sơ nội bộ — KHÔNG đưa lên GitHub ===
+backend/dossiers.json
+backend/data.json
+backend/config.json
+backend/backups/
+backend/Backup_QLCV_*.json
+backend/bao_cao_kho.html
+# File gộp/nhập dữ liệu cũ còn sót lại (chứa tiêu đề hồ sơ thật); không bao giờ commit
+backend/Danh_Muc_Ho_So.xlsx
+backend/bao_cao_lech.html
+backend/dossiers_gop_*.json
+backend/quyet_dinh*.json
 backend/static/ho-so/
 backend/static/ho_so/
-backend/backups/
-backend/dossiers.json
-backend/Danh_Muc_Ho_So.xlsx
-backend/Backup_QLCV_*.json
 frontend/data/
-config.json
-data.json
 
-# Môi trường và sản phẩm build
-venv/
-test_venv/
-node_modules/
-dist/
-__pycache__/
-*.pyc
-
-# Khoá OAuth tải từ Google Cloud — tuyệt đối không commit
-client_secret*.json
-
-# Báo cáo gộp hồ sơ (chứa tiêu đề hồ sơ thật)
-backend/bao_cao_lech.html
-backend/quyet_dinh*.json
-backend/dossiers_gop_*.json
-
-# Bản build giao diện QLCV cho Flask (tạo lại bằng npm run build:flask)
-backend/qlcv_dist/
-
-backend/bao_cao_kho.html
-
-backend/qlcv_dist_moi/
-
-# Biến môi trường / mật khẩu cục bộ — không bao giờ commit
+# === Mật khẩu và biến môi trường cục bộ — không bao giờ commit ===
 .env
 .env.*
 frontend/.env
@@ -40,3 +22,17 @@ frontend/.env.*
 *.local
 !.env.example
 !frontend/.env.example
+# Khoá OAuth tải từ Google Cloud
+client_secret*.json
+
+# === Môi trường và sản phẩm build (tạo lại được) ===
+venv/
+node_modules/
+dist/
+__pycache__/
+*.pyc
+# Bản build giao diện cho Flask (npm run build:flask)
+backend/qlcv_dist/
+
+# === Thư mục tạm của Google Drive for Desktop ===
+.tmp.driveupload/

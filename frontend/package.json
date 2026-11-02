@@ -6,8 +6,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node server.js",
-    "start": "concurrently \"vite\" \"node server.js\"",
     "build": "vite build",
     "build:flask": "vite build --base=/ --outDir ../backend/qlcv_dist --emptyOutDir",
     "preview": "vite preview",
@@ -25,7 +23,6 @@
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
     "autoprefixer": "^10.4.14",
-    "concurrently": "^8.2.2",
     "gh-pages": "^6.3.0",
     "postcss": "^8.4.24",
     "tailwindcss": "^3.3.2",

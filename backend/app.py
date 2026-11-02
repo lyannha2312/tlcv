@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Hồ sơ công việc - PV01 (Công an thành phố Đồng Nai)
-Ứng dụng chạy local bằng Flask - độc lập hoàn toàn với dự án "Sổ tay AI".
+Trợ lý công việc - máy chủ Flask chạy trên máy cá nhân (PV01, Công an thành phố Đồng Nai).
 
-Dữ liệu lưu trong Danh_Muc_Ho_So.xlsx (cùng thư mục với app.py).
-PDF của từng hồ sơ lưu trong:
-    static/ho_so/{năm}/{Lĩnh vực}/{Tên thư mục hồ sơ}/{1_Chỉ đạo|2_Phụ lục|3_Báo cáo đơn vị|4_Triển khai|5_Bản nháp}/*
-Năm được lấy theo "Ngày VB đến" (nếu trống thì lấy theo "Ngày tạo hồ sơ").
-Lĩnh vực trống sẽ được xếp vào thư mục "CHƯA PHÂN LOẠI".
+- Phục vụ giao diện React đã build (qlcv_dist/) và lưu dữ liệu: dossiers.json (hồ sơ), data.json (các sổ ghi chép).
+- Quản lý tài liệu của từng hồ sơ trong kho (HOSO_ROOT trong config.json), theo cấu trúc:
+      {năm}/{chuyên đề}/{tên thư mục hồ sơ}/{1_Chỉ đạo|2_Phụ lục|3_Báo cáo đơn vị|4_Triển khai|5_Bản nháp}/
+  Đường dẫn của hồ sơ được lưu cố định (storagePath); đổi chuyên đề/năm/tên thì thư mục chuyển theo.
 
 Cài đặt:  pip install -r requirements.txt
 Chạy:     python app.py     (hoặc bấm đúp Mo_KhoHoSo.bat)
@@ -22,13 +20,11 @@ import time
 import webbrowser
 from datetime import datetime
 
-import pandas as pd
-from flask import Flask, jsonify, render_template, request, send_from_directory, abort
+from flask import Flask, jsonify, request, send_from_directory, abort
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)  # không có thư mục static riêng; file hồ sơ phục vụ ở serve_pdf
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-EXCEL_PATH = os.path.join(BASE_DIR, "Danh_Muc_Ho_So.xlsx")
 
 # Cấu hình riêng của từng máy (không đưa lên GitHub) - xem config.example.json.
 # HOSO_ROOT: thư mục gốc chứa hồ sơ (vd. thư mục nằm trong Google Drive).
@@ -83,35 +79,8 @@ if os.environ.get("QLCV_HOSO_ROOT"):
 
 PORT = int(os.environ.get("QLCV_PORT", "5001"))
 
-# Cấu trúc cột chuẩn - đây là "hợp đồng" giữa Excel <-> Web.
-# Nếu đổi tên cột trong Excel, phải sửa lại danh sách này cho khớp.
-COLUMNS = [
-    "STT",
-    "Tên thư mục hồ sơ",
-    "Tiêu đề công việc",
-    "Lĩnh vực",
-    "Trạng thái",
-    "Số hiệu VB đến",
-    "Ngày VB đến",
-    "Nơi gửi",
-    "Trích yếu VB đến",
-    "Kết quả xử lý / VB tham mưu",
-    "Ngày tạo hồ sơ",
-    "Hạn xử lý",
-    "Ghi chú",
-]
 
-LINH_VUC_OPTIONS = [
-    "TRÍ TUỆ NHÂN TẠO AI",
-    "KHUNG KIẾN TRÚC",
-    "CHUYỂN ĐỔI SỐ",
-    "TRIỂN KHAI",
-    "GÓP Ý",
-    "DNIS",
-    "KHÁC",
-]
 
-TRANG_THAI_OPTIONS = ["Đang xử lý", "Đã hoàn thành"]
 
 # Các loại tài liệu gắn với mỗi hồ sơ - đây cũng là tên các thư mục con trong thư mục tài liệu của hồ sơ đó.
 # Số đứng đầu để Explorer/Drive sắp xếp đúng quy trình; tên ngắn để đường dẫn trên Drive không quá dài.
@@ -156,15 +125,8 @@ ALLOWED_UPLOAD_EXTS = {
     ".jpg", ".jpeg", ".png", ".gif", ".txt", ".rtf", ".zip", ".rar",
 }
 
-KEY_COL = "Tên thư mục hồ sơ"
-LINH_VUC_COL = "Lĩnh vực"
 UNCLASSIFIED = "CHƯA PHÂN LOẠI"
 
-# Tên sheet chứa dữ liệu hồ sơ trong file Excel (khớp với sheet dữ liệu trong
-# file mẫu "Mau_Nhap_Ho_So.xlsx" - file mẫu đó còn có thêm 1 sheet "Hướng dẫn"
-# đứng trước, nên khi nhập Excel phải đọc đúng tên sheet này, không được đọc
-# đại sheet đầu tiên).
-DATA_SHEET_NAME = "Danh_Muc_Ho_So"
 
 
 DATA_DIR = os.environ.get("QLCV_DATA_DIR") or BASE_DIR
@@ -181,105 +143,18 @@ DATA_PATH = os.path.join(DATA_DIR, "data.json")
 DATA_COLLECTIONS = ["dnisLogs", "mailLogs", "coordLogs", "schedules", "meetings"]
 
 
-class ExcelLockedException(Exception):
-    pass
 
 
-@app.errorhandler(ExcelLockedException)
-def handle_excel_locked(e):
-    return jsonify({
-        "error": "Tệp Excel Danh_Muc_Ho_So.xlsx đang được mở bởi chương trình khác (như Microsoft Excel). Vui lòng đóng tệp Excel trên máy tính của bạn và thử lại."
-    }), 409
 
 
-def ensure_excel():
-    if not os.path.exists(EXCEL_PATH):
-        df = pd.DataFrame(columns=COLUMNS)
-        try:
-            df.to_excel(EXCEL_PATH, index=False)
-        except PermissionError:
-            raise ExcelLockedException()
 
 
-def generate_id():
-    import uuid
-    return uuid.uuid4().hex[:7]
-
-
-def migrate_excel_to_json():
-    if os.path.exists(JSON_PATH):
-        return
-        
-    import glob
-    import json
-    import re
-    
-    backup_files = glob.glob(os.path.join(BASE_DIR, "Backup_QLCV_*.json"))
-    if not backup_files:
-        backup_files = glob.glob(os.path.join(BASE_DIR, "*.json"))
-        
-    if not backup_files:
-        with open(JSON_PATH, "w", encoding="utf-8") as f:
-            json.dump({"dossiers": []}, f, ensure_ascii=False, indent=4)
-        return
-        
-    latest_backup = max(backup_files, key=os.path.getmtime)
-    try:
-        with open(latest_backup, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        print(f"Error reading JSON backup: {e}")
-        data = {"dossiers": []}
-        
-    dossiers = data.get("dossiers", [])
-    
-    excel_rows = []
-    if os.path.exists(EXCEL_PATH):
-        try:
-            df = pd.read_excel(EXCEL_PATH, dtype=str).fillna("")
-            excel_rows = df.to_dict(orient="records")
-        except Exception as e:
-            print(f"Error reading Excel during migration: {e}")
-            
-    for d in dossiers:
-        folder_name = d.get("folderPath") or d.get("folderName", "")
-        if not folder_name:
-            title = str(d.get("title", "")).strip().lower()
-            so_hieu = str(d.get("originalDoc", {}).get("number", "")).strip().lower() if d.get("originalDoc") else ""
-            
-            for row in excel_rows:
-                e_title = str(row.get("Tiêu đề công việc", "")).strip().lower()
-                if e_title == title:
-                    folder_name = str(row.get("Tên thư mục hồ sơ", "")).strip()
-                    break
-                    
-            if not folder_name and so_hieu:
-                for row in excel_rows:
-                    e_sohieu = str(row.get("Số hiệu VB đến", "")).strip().lower()
-                    if e_sohieu == so_hieu:
-                        folder_name = str(row.get("Tên thư mục hồ sơ", "")).strip()
-                        break
-                        
-            if not folder_name:
-                orig_doc = d.get("originalDoc") or {}
-                date_den = orig_doc.get("date") or d.get("createdAt", "")[:10]
-                num_den = orig_doc.get("number") or "KO-SO"
-                clean_title = re.sub(r'[\\/*?:"<>|]', "", d.get("title", ""))
-                clean_title = clean_title.replace(" ", "-")[:40]
-                folder_name = f"{date_den}_{num_den}_{clean_title}"
-            
-        d["folderPath"] = folder_name
-        if "folderName" in d:
-            d.pop("folderName")
-        
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump({"version": 2, "dossiers": dossiers}, f, ensure_ascii=False, indent=4)
 
 
 def load_dossiers():
     import json
     if not os.path.exists(JSON_PATH):
-        migrate_excel_to_json()
+        return []  # chạy lần đầu: chưa có dữ liệu
     try:
         with open(JSON_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -394,103 +269,24 @@ def merge_by_id(current, incoming, prepend=False):
     return items, {"added": len(new_items), "updated": updated, "kept": len(current) - updated}
 
 
-def dossier_to_excel_record(d):
-    orig = d.get("originalDoc", {}) or {}
-    status_map = {
-        "active": "Đang xử lý",
-        "archived": "Đã hoàn thành"
-    }
-    raw_status = d.get("status", "active")
-    status = status_map.get(raw_status, raw_status)
-    
-    created_at = d.get("createdAt", "")
-    if created_at and "T" in created_at:
-        created_at = created_at.split("T")[0]
-        
-    return {
-        "STT": "",
-        "Tên thư mục hồ sơ": d.get("folderPath") or d.get("folderName", ""),
-        "Tiêu đề công việc": d.get("title", ""),
-        "Lĩnh vực": d.get("category", ""),
-        "Trạng thái": status,
-        "Số hiệu VB đến": orig.get("number", ""),
-        "Ngày VB đến": orig.get("date", ""),
-        "Nơi gửi": orig.get("sender", ""),
-        "Trích yếu VB đến": orig.get("summary", ""),
-        "Kết quả xử lý / VB tham mưu": d.get("finalResult", ""),
-        "Ngày tạo hồ sơ": created_at,
-        "Hạn xử lý": d.get("deadline", ""),
-        "Ghi chú": d.get("note", d.get("Ghi chú", "")),
-        # Đường dẫn thư mục đã chốt của hồ sơ (năm/chuyên đề/tên); xem derive_storage_path.
-        "_storagePath": d.get("storagePath", ""),
-    }
 
 
-def excel_record_to_dossier(payload, existing_dossier=None):
-    if existing_dossier is None:
-        existing_dossier = {
-            "id": generate_id(),
-            "relatedDocs": [],
-            "tasks": []
-        }
-        
-    status_map = {
-        "Đang xử lý": "active",
-        "Đã hoàn thành": "archived"
-    }
-    raw_status = payload.get("Trạng thái", "Đang xử lý")
-    status = status_map.get(raw_status, "active")
-    
-    existing_dossier["folderPath"] = payload.get("Tên thư mục hồ sơ", "").strip()
-    if "folderName" in existing_dossier:
-        existing_dossier.pop("folderName")
-    existing_dossier["title"] = payload.get("Tiêu đề công việc", "").strip()
-    existing_dossier["category"] = payload.get("Lĩnh vực", "").strip()
-    existing_dossier["status"] = status
-    existing_dossier["finalResult"] = payload.get("Kết quả xử lý / VB tham mưu", "").strip()
-    existing_dossier["deadline"] = payload.get("Hạn xử lý", "").strip()
-    existing_dossier["note"] = payload.get("Ghi chú", "").strip()
-    
-    created_date = payload.get("Ngày tạo hồ sơ", "").strip()
-    if created_date:
-        existing_dossier["createdAt"] = f"{created_date}T00:00:00.000Z"
-    elif "createdAt" not in existing_dossier:
-        existing_dossier["createdAt"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000Z")
-        
-    orig = existing_dossier.setdefault("originalDoc", {})
-    if not orig:
-        orig = {}
-        existing_dossier["originalDoc"] = orig
-    orig["number"] = payload.get("Số hiệu VB đến", "").strip()
-    orig["date"] = payload.get("Ngày VB đến", "").strip()
-    orig["sender"] = payload.get("Nơi gửi", "").strip()
-    orig["summary"] = payload.get("Trích yếu VB đến", "").strip()
-    
-    return existing_dossier
 
 
-def record_year(row):
-    for field in ("Ngày VB đến", "Ngày tạo hồ sơ"):
-        val = str(row.get(field, "")).strip()
-        if len(val) >= 4 and val[:4].isdigit():
-            return val[:4]
-    return str(datetime.now().year)
 
 
-def folder_path_for(row):
-    """Hồ sơ được lưu theo cấu trúc: static/ho_so/{năm}/{lĩnh vực}/{tên thư mục hồ sơ}/
+def folder_path_for(d):
+    """Thư mục tài liệu của hồ sơ d: (đường dẫn đầy đủ, năm, chuyên đề, tên thư mục).
 
-    Hồ sơ đã có storagePath thì dùng đúng đường dẫn đó, không tính lại từ chuyên đề/ngày,
-    để đổi chuyên đề trong dữ liệu không làm mất liên kết với thư mục trên đĩa.
+    Hồ sơ đã có storagePath thì dùng đúng đường dẫn đó, không tính lại từ chuyên đề/ngày, để đổi chuyên đề
+    trong dữ liệu không làm mất liên kết với thư mục trên đĩa. Chưa có thì tính từ dữ liệu hiện tại.
+    Hồ sơ chưa có tên thư mục thì trả về bốn chuỗi rỗng.
     """
-    stored = str(row.get("_storagePath", "")).strip("/")
-    parts = stored.split("/") if stored else []
-    if len(parts) == 3 and all(parts):
-        year, linh_vuc, folder_name = parts
-        return os.path.join(HOSO_ROOT, year, linh_vuc, folder_name), year, linh_vuc, folder_name
-    year = record_year(row)
-    linh_vuc = str(row.get(LINH_VUC_COL, "")).strip() or UNCLASSIFIED
-    folder_name = str(row.get(KEY_COL, "")).strip()
+    path = str(d.get("storagePath") or "").strip("/") or derive_storage_path(d)
+    parts = path.split("/") if path else []
+    if len(parts) != 3 or not all(parts):
+        return "", "", "", ""
+    year, linh_vuc, folder_name = parts
     return os.path.join(HOSO_ROOT, year, linh_vuc, folder_name), year, linh_vuc, folder_name
 
 
@@ -646,75 +442,8 @@ def undo_moves(done):
             print(f"Warning: không hoàn lại được {dst} -> {src}: {e}")
 
 
-def get_hoso_files_map():
-    """Duyệt qua HOSO_ROOT một lần để lấy danh sách tất cả file trên đĩa,
-       tránh việc thực hiện hàng trăm lệnh gọi hệ thống (I/O) listdir.
-    """
-    files_map = {}
-    if not os.path.exists(HOSO_ROOT):
-        return files_map
-    for root, dirs, files in os.walk(HOSO_ROOT):
-        rel_path = os.path.relpath(root, HOSO_ROOT)
-        if rel_path == ".":
-            continue
-        parts = rel_path.split(os.sep)
-        if len(parts) == 4:
-            year, linh_vuc, folder_name, cat = parts
-            if cat in CATEGORIES:
-                allowed_files = sorted(
-                    f for f in files
-                    if os.path.splitext(f)[1].lower() in ALLOWED_UPLOAD_EXTS
-                )
-                files_map.setdefault(year, {}).setdefault(linh_vuc, {}).setdefault(folder_name, {})[cat] = allowed_files
-    return files_map
 
 
-def list_pdfs_for_row(row, files_map=None):
-    """Trả về dict {category: [{"fileName":.., "url":..}, ...]} cho các loại tài liệu."""
-    folder, year, linh_vuc, folder_name = folder_path_for(row)
-    if not folder_name:
-        return {}
-    
-    # Xác định các thư mục hiển thị cho hồ sơ này
-    # Thư mục báo cáo đơn vị chỉ được hiển thị nếu tồn tại trên đĩa
-    has_bc = False
-    if files_map is not None:
-        has_bc = FOLDER_REPORTS in files_map.get(year, {}).get(linh_vuc, {}).get(folder_name, {})
-    else:
-        has_bc = os.path.isdir(os.path.join(folder, FOLDER_REPORTS))
-        
-    active_categories = list(DEFAULT_FOLDERS)
-    if has_bc:
-        active_categories.append(FOLDER_REPORTS)
-    
-    result = {}
-    for cat in active_categories:
-        if files_map is not None:
-            files = files_map.get(year, {}).get(linh_vuc, {}).get(folder_name, {}).get(cat, [])
-            result[cat] = [
-                {
-                    "fileName": f,
-                    "url": f"/static/{HOSO_FOLDER_NAME}/{year}/{linh_vuc}/{folder_name}/{cat}/{f}",
-                }
-                for f in files
-            ]
-        else:
-            cat_dir = os.path.join(folder, cat)
-            if not os.path.isdir(cat_dir):
-                result[cat] = []
-                continue
-            files = sorted(
-                f for f in os.listdir(cat_dir)
-                if os.path.splitext(f)[1].lower() in ALLOWED_UPLOAD_EXTS
-            )
-            result[cat] = [
-                {
-                    "fileName": f,
-                    "url": f"/static/{HOSO_FOLDER_NAME}/{year}/{linh_vuc}/{folder_name}/{cat}/{f}",
-                }
-                for f in files
-            ]
-    return result
 
 
 # Đường dẫn kho khi xem qua Drive (vd. H:\Other computers\My Laptop\ho-so): chỉ dùng để tính độ dài đường dẫn.
@@ -848,15 +577,6 @@ def qlcv_assets(filename):
     return send_from_directory(os.path.join(QLCV_DIST_DIR, "assets"), filename)
 
 
-@app.route("/kho")
-def kho():
-    """Trang Kho hồ sơ (xem, tải file PDF). QLCV nhúng trang này ở tab "Kho tài liệu"."""
-    return render_template(
-        "index.html",
-        linh_vuc_options=LINH_VUC_OPTIONS,
-        trang_thai_options=TRANG_THAI_OPTIONS,
-        categories=CATEGORIES,
-    )
 
 
 @app.route("/api/dossiers", methods=["GET"])
@@ -904,106 +624,14 @@ def api_dossiers_put():
     return jsonify({"ok": True, "count": len(items), "moved": [m[1] for m in moves]})
 
 
-@app.route("/api/ho_so", methods=["GET"])
-def api_list():
-    dossiers = load_dossiers()
-    records = [dossier_to_excel_record(d) for d in dossiers]
-    for i, r in enumerate(records, 1):
-        r["STT"] = str(i)
-    files_map = get_hoso_files_map()
-    for r in records:
-        r["pdfs"] = list_pdfs_for_row(r, files_map)
-        r["_year"] = record_year(r)
-    return jsonify(records)
 
 
-@app.route("/api/ho_so", methods=["POST"])
-def api_create():
-    payload = request.get_json(force=True)
-    dossiers = load_dossiers()
-
-    key = str(payload.get(KEY_COL, "")).strip()
-    if not key:
-        return jsonify({"error": f'"{KEY_COL}" không được để trống'}), 400
-        
-    if any(str(d.get("folderPath") or d.get("folderName", "")).strip() == key for d in dossiers):
-        return jsonify({"error": f'Tên thư mục hồ sơ "{key}" đã tồn tại'}), 400
-
-    new_dossier = excel_record_to_dossier(payload)
-    if derive_storage_path(new_dossier):
-        new_dossier["storagePath"] = derive_storage_path(new_dossier)
-    dossiers.append(new_dossier)
-    save_dossiers(dossiers)
-
-    new_row = dossier_to_excel_record(new_dossier)
-    folder, _, _, folder_name = folder_path_for(new_row)
-    if folder_name:
-        ensure_category_dirs(folder)
-
-    return jsonify({"ok": True})
 
 
-@app.route("/api/ho_so/<path:old_key>", methods=["PUT"])
-def api_update(old_key):
-    payload = request.get_json(force=True)
-    dossiers = load_dossiers()
-
-    target_dossier = None
-    for d in dossiers:
-        if (d.get("folderPath") or d.get("folderName", "")) == old_key:
-            target_dossier = d
-            break
-            
-    if not target_dossier:
-        return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
-
-    new_key = str(payload.get(KEY_COL, "")).strip()
-    if not new_key:
-        return jsonify({"error": f'"{KEY_COL}" không được để trống'}), 400
-    if new_key != old_key and any((d.get("folderPath") or d.get("folderName", "")) == new_key for d in dossiers):
-        return jsonify({"error": f'Tên thư mục hồ sơ "{new_key}" đã tồn tại'}), 400
-
-    import copy
-    before = copy.deepcopy(target_dossier)
-    excel_record_to_dossier(payload, target_dossier)
-
-    errors, moves, creates = plan_storage_changes([target_dossier], [before])
-    if errors:
-        return jsonify({"error": " | ".join(errors)}), 409
-    try:
-        done = execute_moves(moves)
-    except Exception as e:
-        return jsonify({"error": f"Không chuyển được thư mục hồ sơ (file đang mở?): {e}"}), 500
-    try:
-        save_dossiers(dossiers)
-    except Exception as e:
-        undo_moves(done)
-        return jsonify({"error": str(e)}), 500
-    for path in creates:
-        ensure_category_dirs(storage_dir(path))
-    return jsonify({"ok": True})
 
 
-@app.route("/api/ho_so/<path:key>", methods=["DELETE"])
-def api_delete(key):
-    dossiers = load_dossiers()
-    if not any((d.get("folderPath") or d.get("folderName", "")) == key for d in dossiers):
-        return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
-        
-    dossiers = [d for d in dossiers if (d.get("folderPath") or d.get("folderName", "")) != key]
-    save_dossiers(dossiers)
-    return jsonify({"ok": True})
 
 
-@app.route("/api/ho_so/open_root", methods=["POST"])
-def api_open_root():
-    os.makedirs(HOSO_ROOT, exist_ok=True)
-    try:
-        import subprocess
-        subprocess.Popen(["explorer.exe", os.path.normpath(HOSO_ROOT)])
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"error": f"Không thể mở thư mục gốc: {e}"}), 500
 
 
 @app.route("/api/ho_so/<path:key>/files", methods=["GET"])
@@ -1012,8 +640,7 @@ def api_dossier_files(key):
     target_dossier = next((d for d in load_dossiers() if (d.get("folderPath") or d.get("folderName", "")) == key), None)
     if not target_dossier:
         return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
-    row = dossier_to_excel_record(target_dossier)
-    folder, year, linh_vuc, folder_name = folder_path_for(row)
+    folder, year, linh_vuc, folder_name = folder_path_for(target_dossier)
     if not folder_name:
         return jsonify({"categories": {cat: [] for cat in DEFAULT_FOLDERS}})
     return jsonify({"categories": list_dossier_groups(folder, f"{year}/{linh_vuc}/{folder_name}")})
@@ -1031,8 +658,9 @@ def api_open_folder(key):
     if not target_dossier:
         return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
         
-    row = dossier_to_excel_record(target_dossier)
-    folder, _, _, _ = folder_path_for(row)
+    folder, _, _, _ = folder_path_for(target_dossier)
+    if not folder:
+        return jsonify({"error": "Hồ sơ chưa có thư mục"}), 400
     os.makedirs(folder, exist_ok=True)
     try:
         import subprocess
@@ -1042,150 +670,14 @@ def api_open_folder(key):
         return jsonify({"error": f"Không thể mở thư mục hồ sơ: {e}"}), 500
 
 
-@app.route("/api/ho_so/export", methods=["GET"])
-def api_export():
-    try:
-        dossiers = load_dossiers()
-        import json
-        from flask import make_response
-        
-        export_data = {"version": 2, "dossiers": dossiers}
-        json_str = json.dumps(export_data, ensure_ascii=False, indent=4)
-        
-        response = make_response(json_str)
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        response.headers["Content-Disposition"] = f"attachment; filename=Backup_QLCV_{current_date}.json"
-        response.headers["Content-Type"] = "application/json; charset=utf-8"
-        return response
-    except Exception as e:
-        return jsonify({"error": f"Không thể xuất file JSON: {e}"}), 500
 
 
-@app.route("/api/ho_so/import", methods=["POST"])
-def api_import():
-    if "file" not in request.files:
-        return jsonify({"error": "Chưa chọn file"}), 400
-    f = request.files["file"]
-    
-    try:
-        import json
-        data = json.load(f)
-    except Exception as e:
-        return jsonify({"error": f"Không đọc được file JSON: {e}"}), 400
-
-    if isinstance(data, dict):
-        imported_dossiers = data.get("dossiers", [])
-    elif isinstance(data, list):
-        imported_dossiers = data
-    else:
-        return jsonify({"error": "Định dạng file JSON không hợp lệ"}), 400
-
-    if not isinstance(imported_dossiers, list):
-        return jsonify({"error": "Danh sách hồ sơ (dossiers) không hợp lệ"}), 400
-
-    dossiers = load_dossiers()
-    
-    id_map = {d["id"]: d for d in dossiers if d.get("id")}
-    folder_map = {}
-    for d in dossiers:
-        f_val = d.get("folderPath") or d.get("folderName")
-        if f_val:
-            folder_map[f_val] = d
-    
-    updated_count = 0
-    added_count = 0
-    
-    for item in imported_dossiers:
-        if not isinstance(item, dict):
-            continue
-            
-        matched_dossier = None
-        item_id = item.get("id")
-        item_folder = item.get("folderPath") or item.get("folderName")
-        
-        if item_id and item_id in id_map:
-            matched_dossier = id_map[item_id]
-        elif item_folder and item_folder in folder_map:
-            matched_dossier = folder_map[item_folder]
-            
-        if matched_dossier:
-            existing_id = matched_dossier.get("id") or generate_id()
-            # Import không di chuyển thư mục: giữ nguyên đường dẫn lưu trữ đang có, bỏ qua storagePath trong file.
-            kept_path = matched_dossier.get("storagePath") or derive_storage_path(matched_dossier)
-            matched_dossier.clear()
-            matched_dossier.update(item)
-            matched_dossier.pop("storagePath", None)
-            if kept_path:
-                matched_dossier["storagePath"] = kept_path
-            if "folderName" in matched_dossier:
-                f_name = matched_dossier.pop("folderName")
-                if not matched_dossier.get("folderPath"):
-                    matched_dossier["folderPath"] = f_name
-            matched_dossier["id"] = existing_id
-            updated_count += 1
-        else:
-            new_item = item.copy()
-            new_item.pop("storagePath", None)
-            if "id" not in new_item or not new_item["id"]:
-                new_item["id"] = generate_id()
-            if "folderName" in new_item:
-                f_name = new_item.pop("folderName")
-                if not new_item.get("folderPath"):
-                    new_item["folderPath"] = f_name
-            if derive_storage_path(new_item):
-                new_item["storagePath"] = derive_storage_path(new_item)
-            dossiers.append(new_item)
-            id_map[new_item["id"]] = new_item
-            f_val = new_item.get("folderPath")
-            if f_val:
-                folder_map[f_val] = new_item
-            added_count += 1
-
-    save_dossiers(dossiers)
-
-    # Đảm bảo cấu trúc thư mục đầy đủ cho tất cả hồ sơ sau khi import
-    for d in dossiers:
-        row = dossier_to_excel_record(d)
-        folder, _, _, folder_name = folder_path_for(row)
-        if folder_name:
-            ensure_category_dirs(folder)
-
-    return jsonify({"ok": True, "count": len(dossiers), "added": added_count, "updated": updated_count})
 
 
 def safe_pdf_filename(raw):
     return os.path.basename(str(raw or "").strip())
 
 
-@app.route("/api/ho_so/<path:key>/create_category", methods=["POST"])
-def api_create_category(key):
-    dossiers = load_dossiers()
-    target_dossier = None
-    for d in dossiers:
-        if (d.get("folderPath") or d.get("folderName", "")) == key:
-            target_dossier = d
-            break
-            
-    if not target_dossier:
-        return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
-
-    payload = request.get_json(force=True)
-    category = str(payload.get("category", "")).strip()
-    if not category:
-        return jsonify({"error": "Tên thư mục không được để trống"}), 400
-        
-    canonical = canonical_category(category)
-    if not canonical:
-        return jsonify({"error": "Thư mục không hợp lệ"}), 400
-
-    row = dossier_to_excel_record(target_dossier)
-    folder, _, _, _ = folder_path_for(row)
-    cat_dir = category_dir(folder, canonical)
-    try:
-        os.makedirs(cat_dir, exist_ok=True)
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"error": f"Không thể tạo thư mục: {e}"}), 500
 
 
 @app.route("/api/ho_so/<path:key>/upload", methods=["POST"])
@@ -1201,8 +693,9 @@ def api_upload_pdf(key):
         return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
 
     category = str(request.form.get("category", "")).strip()
-    row = dossier_to_excel_record(target_dossier)
-    folder, _, _, _ = folder_path_for(row)
+    folder, _, _, _ = folder_path_for(target_dossier)
+    if not folder:
+        return jsonify({"error": "Hồ sơ chưa có thư mục"}), 400
     cat_dir = resolve_group_dir(folder, category)
     if not cat_dir:
         return jsonify({"error": "Loại tài liệu không hợp lệ"}), 400
@@ -1250,8 +743,9 @@ def api_delete_pdf(key, category, filename):
     if not target_dossier:
         return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
 
-    row = dossier_to_excel_record(target_dossier)
-    folder, _, _, _ = folder_path_for(row)
+    folder, _, _, _ = folder_path_for(target_dossier)
+    if not folder:
+        return jsonify({"error": "Hồ sơ chưa có thư mục"}), 400
     group_dir = resolve_group_dir(folder, category)
     if not group_dir:
         return jsonify({"error": "Loại tài liệu không hợp lệ"}), 400
@@ -1265,142 +759,6 @@ def api_delete_pdf(key, category, filename):
     return jsonify({"ok": True})
 
 
-@app.route("/api/ho_so/<path:key>/timeline_details", methods=["GET"])
-def api_timeline_details(key):
-    dossiers = load_dossiers()
-    target_dossier = None
-    for d in dossiers:
-        if (d.get("folderPath") or d.get("folderName", "")) == key:
-            target_dossier = d
-            break
-            
-    if not target_dossier:
-        return jsonify({
-            "found": False,
-            "message": "Không tìm thấy dữ liệu chi tiết của hồ sơ này."
-        })
-        
-    events = []
-    
-    # 1. Original Doc
-    orig = target_dossier.get("originalDoc", {})
-    orig_date = (orig.get("date") if orig else None) or target_dossier.get("createdAt", "")[:10]
-    if orig:
-        content_html = f"<b>Số hiệu:</b> {orig.get('number') or '—'}<br>"
-        content_html += f"<b>Nơi gửi:</b> {orig.get('sender') or '—'}<br>"
-        content_html += f"<b>Trích yếu:</b> {orig.get('summary') or '—'}"
-        if orig.get("content"):
-            content_html += f"<br><b>Ý kiến chỉ đạo:</b> {orig.get('content')}"
-            
-        events.append({
-            "date": orig_date,
-            "type": "original_doc",
-            "icon": "fa-file-import",
-            "title": "Văn bản đến (Khởi tạo hồ sơ)",
-            "content": content_html
-        })
-    else:
-        events.append({
-            "date": target_dossier.get("createdAt", "")[:10],
-            "type": "created",
-            "icon": "fa-folder-plus",
-            "title": "Khởi tạo hồ sơ",
-            "content": "Bắt đầu thụ lý hồ sơ."
-        })
-        
-    # 2. Related Docs
-    for doc in target_dossier.get("relatedDocs", []):
-        doc_type = doc.get("type")
-        added_at = doc.get("addedAt", "")
-        date_str = doc.get("date") or added_at[:10] or "—"
-        
-        if doc_type == "progress":
-            events.append({
-                "date": date_str,
-                "type": "progress",
-                "icon": "fa-spinner",
-                "title": "Cập nhật tiến độ",
-                "content": doc.get("content") or "—"
-            })
-        else:
-            content_html = f"<b>Số hiệu:</b> {doc.get('number') or '—'}<br>"
-            content_html += f"<b>Trích yếu:</b> {doc.get('content') or '—'}"
-            if doc.get("sender"):
-                content_html += f"<br><b>Nơi gửi:</b> {doc.get('sender')}"
-            if doc.get("note"):
-                content_html += f"<br><b>Ghi chú:</b> {doc.get('note')}"
-                
-            doc_label = doc.get("docType") or "Văn bản liên quan"
-            events.append({
-                "date": date_str,
-                "type": "document",
-                "icon": "fa-file-lines",
-                "title": f"Đính kèm: {doc_label}",
-                "content": content_html
-            })
-            
-    # 3. Tasks
-    for task in target_dossier.get("tasks", []):
-        created_at = task.get("createdAt", "")
-        if created_at:
-            events.append({
-                "date": created_at[:10],
-                "type": "task_created",
-                "icon": "fa-tasks",
-                "title": "Giao nhiệm vụ",
-                "content": f"Giao nhiệm vụ: <b>{task.get('title') or '—'}</b>"
-            })
-            
-        completed_at = task.get("completedAt", "")
-        if task.get("isCompleted") and completed_at:
-            events.append({
-                "date": completed_at[:10],
-                "type": "task_completed",
-                "icon": "fa-check-double",
-                "title": "Hoàn thành nhiệm vụ",
-                "content": f"Đã hoàn thành: <b>{task.get('title') or '—'}</b>"
-            })
-            
-    # 4. Closed / Final Result
-    final_result = target_dossier.get("finalResult")
-    closed_at = target_dossier.get("closedAt")
-    if closed_at or final_result:
-        date_str = closed_at[:10] if closed_at else "—"
-        content_html = ""
-        if final_result:
-            content_html = f"<b>Kết quả tham mưu:</b> {final_result}"
-        else:
-            content_html = "Hồ sơ hoàn thành và đóng lại."
-            
-        events.append({
-            "date": date_str,
-            "type": "closed",
-            "icon": "fa-box-archive",
-            "title": "Hoàn thành / Đóng hồ sơ",
-            "content": content_html
-        })
-        
-    def sort_key(e):
-        d = e["date"]
-        if not d or d == "—":
-            return "9999-12-31"
-        return d[:10]
-        
-    events.sort(key=sort_key)
-    
-    for e in events:
-        d = e["date"]
-        if d and len(d) >= 10 and d[:4].isdigit():
-            e["formatted_date"] = f"{d[8:10]}/{d[5:7]}/{d[:4]}"
-        else:
-            e["formatted_date"] = d
-            
-    return jsonify({
-        "found": True,
-        "title": target_dossier.get("title"),
-        "id": target_dossier.get("id"),
-        "events": events
-    })
 
 
 @app.route("/api/data", methods=["GET"])

@@ -26,10 +26,9 @@ def make_dossier(id_, folder, category="GÓP Ý", date="2026-05-01", **extra):
 class LuuTruTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="qlcv_test_")
-        self.old = (server.HOSO_ROOT, server.JSON_PATH, server.BACKUP_DIR, server.BASE_DIR, server.EXCEL_PATH)
-        # BASE_DIR/EXCEL_PATH cũng trỏ vào thư mục tạm để không đọc nhầm Backup_QLCV_*.json hay Excel thật.
+        self.old = (server.HOSO_ROOT, server.JSON_PATH, server.BACKUP_DIR, server.BASE_DIR)
+        # BASE_DIR cũng trỏ vào thư mục tạm để không đọc nhầm file cấu hình/dữ liệu thật.
         server.BASE_DIR = self.tmp
-        server.EXCEL_PATH = os.path.join(self.tmp, "khong-co.xlsx")
         server.HOSO_ROOT = os.path.join(self.tmp, "ho-so")
         server.JSON_PATH = os.path.join(self.tmp, "dossiers.json")
         server.BACKUP_DIR = os.path.join(self.tmp, "backups")
@@ -37,7 +36,7 @@ class LuuTruTest(unittest.TestCase):
         self.client = server.app.test_client()
 
     def tearDown(self):
-        server.HOSO_ROOT, server.JSON_PATH, server.BACKUP_DIR, server.BASE_DIR, server.EXCEL_PATH = self.old
+        server.HOSO_ROOT, server.JSON_PATH, server.BACKUP_DIR, server.BASE_DIR = self.old
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     # --- tiện ích ---
@@ -127,7 +126,7 @@ class LuuTruTest(unittest.TestCase):
         r = self.put([make_dossier("a", "2026-04-03_386/PA05")])
         self.assertEqual(r.status_code, 409)
         self.assertIn("ký tự không được dùng", r.get_json()["error"])
-        self.assertEqual(self.saved(), {})  # không ghi gì
+        self.assertFalse(os.path.exists(server.JSON_PATH))  # bị từ chối thì không ghi gì
 
     def test_chuyen_de_co_ky_tu_cam_bi_tu_choi(self):
         self.assertEqual(self.put([make_dossier("a", "f1", category="A/B")]).status_code, 409)
@@ -189,17 +188,6 @@ class LuuTruTest(unittest.TestCase):
         self.assertEqual(groups["2_Phụ lục"][0]["url"], "/static/ho-so/2026/KHÁC/f1/2_Phụ lục/a.pdf")
         self.assertEqual(self.client.get(groups["2_Phụ lục"][0]["url"]).status_code, 200)
 
-    def test_import_khong_di_chuyen_va_bo_qua_storage_path_trong_file(self):
-        self.put([make_dossier("a", "f1")])
-        self.write("2026/GÓP Ý/f1/2_Phụ lục/a.pdf")
-        import io
-        payload = {"dossiers": [make_dossier("a", "f1", category="KHÁC", storagePath="2026/KHÁC/f1")]}
-        data = {"file": (io.BytesIO(json.dumps(payload).encode("utf-8")), "b.json")}
-        r = self.client.post("/api/ho_so/import", data=data, content_type="multipart/form-data")
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(self.saved()["a"]["storagePath"], "2026/GÓP Ý/f1")
-        self.assertTrue(os.path.isfile(self.path("2026", "GÓP Ý", "f1", "2_Phụ lục", "a.pdf")))
-
     # --- tên thư mục con mới / cũ ---
     def test_thu_muc_ten_cu_van_duoc_nhan_ra_va_gop_vao_nhom_ten_moi(self):
         self.put([make_dossier("a", "f1")])
@@ -232,14 +220,6 @@ class LuuTruTest(unittest.TestCase):
         names = sorted(os.listdir(self.path("2026", "GÓP Ý", "f1")))
         self.assertEqual(names, ["1_Chỉ đạo", "2_Phụ lục", "4_Triển khai"])
 
-    def test_tao_thu_muc_bao_cao_nhan_ca_ten_cu_va_ten_moi(self):
-        self.put([make_dossier("a", "f1")])
-        r = self.client.post("/api/ho_so/f1/create_category", json={"category": "Báo cáo của các đơn vị"})
-        self.assertEqual(r.status_code, 200)
-        self.assertTrue(os.path.isdir(self.path("2026", "GÓP Ý", "f1", "3_Báo cáo đơn vị")))
-        self.assertEqual(self.client.post("/api/ho_so/f1/create_category", json={"category": "5_Bản nháp"}).status_code, 200)
-        self.assertEqual(self.client.post("/api/ho_so/f1/create_category", json={"category": "Linh tinh"}).status_code, 400)
-
     def test_canh_bao_khi_ten_file_hoac_duong_dan_qua_dai(self):
         self.put([make_dossier("a", "f1")])
         import io
@@ -253,6 +233,32 @@ class LuuTruTest(unittest.TestCase):
                              content_type="multipart/form-data")
         self.assertEqual(r.get_json()["warnings"], [])
 
+
+    def test_tai_len_tao_thu_muc_bao_cao_va_ban_nhap_khi_chua_co(self):
+        self.put([make_dossier("a", "f1")])
+        import io
+        for group in ("3_Báo cáo đơn vị", "5_Bản nháp"):
+            r = self.client.post("/api/ho_so/f1/upload", data={"category": group, "files": (io.BytesIO(b"x"), "a.pdf")},
+                                 content_type="multipart/form-data")
+            self.assertEqual(r.status_code, 200, group)
+            self.assertTrue(os.path.isfile(self.path("2026", "GÓP Ý", "f1", group, "a.pdf")))
+        # tên cũ của thư mục báo cáo vẫn được nhận và gộp về nhóm tên mới
+        groups = self.client.get("/api/ho_so/f1/files").get_json()["categories"]
+        self.assertIn("3_Báo cáo đơn vị", groups)
+
+    def test_ho_so_chua_co_thu_muc_khong_ghi_vao_thu_muc_hien_hanh(self):
+        d = make_dossier("a", "")
+        self.assertEqual(self.put([d]).status_code, 200)
+        r = self.client.post("/api/ho_so//upload", data={"category": "1_Chỉ đạo"})
+        self.assertIn(r.status_code, (400, 404))
+        self.assertEqual(self.client.get("/api/ho_so//files").status_code, 404)
+
+    def test_trang_kho_cu_va_api_cu_da_go_bo(self):
+        self.assertNotIn("pandas", sys.modules)  # không còn phụ thuộc pandas/Excel
+        for method, path in (("get", "/kho"), ("get", "/api/ho_so"), ("post", "/api/ho_so"), ("get", "/api/ho_so/export"),
+                             ("post", "/api/ho_so/import"), ("post", "/api/ho_so/open_root"), ("get", "/static/css/styles.css"),
+                             ("get", "/api/ho_so/f1/timeline_details"), ("post", "/api/ho_so/f1/create_category")):
+            self.assertIn(getattr(self.client, method)(path).status_code, (404, 405), path)
 
     # --- trang GitHub Pages (chỉ đọc) ---
     PAGES = "https://lyannha2312.github.io"
