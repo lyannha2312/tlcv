@@ -11,8 +11,9 @@
     "build": "vite build",
     "build:flask": "vite build --base=/ --outDir ../backend/qlcv_dist --emptyOutDir",
     "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist --repo https://github.com/lyannha2312/tlcv.git"
+    "predeploy": "npm run build:pages",
+    "deploy": "gh-pages -d dist --repo https://github.com/lyannha2312/tlcv.git",
+    "build:pages": "vite build --mode pages"
   },
   "dependencies": {
     "react": "^18.2.0",
