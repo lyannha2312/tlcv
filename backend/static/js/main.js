@@ -506,7 +506,7 @@ function renderTimeline() {
             <i class="fa-solid fa-upload"></i> Tải lên
           </button>
         </div>`;
-    } else if (cat === "Báo cáo của các đơn vị") {
+    } else if (cat === "3_Báo cáo đơn vị" || cat === "3_Báo cáo đơn vị" || cat === "Báo cáo của các đơn vị") {
       html += `
         <div class="tl-stage-action-wrap" style="padding: 12px 0; border-top: 1px dashed var(--border); margin-top: 8px; margin-bottom: 8px;">
           <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; border-color: var(--primary); color: var(--primary); background: #fffcf8;" onclick="createCategoryFolder('Báo cáo của các đơn vị')">

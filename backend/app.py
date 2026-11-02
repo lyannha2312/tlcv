@@ -5,7 +5,7 @@ Hồ sơ công việc - PV01 (Công an thành phố Đồng Nai)
 
 Dữ liệu lưu trong Danh_Muc_Ho_So.xlsx (cùng thư mục với app.py).
 PDF của từng hồ sơ lưu trong:
-    static/ho_so/{năm}/{Lĩnh vực}/{Tên thư mục hồ sơ}/{Văn bản chỉ đạo|Phụ lục|Văn bản triển khai}/*.pdf
+    static/ho_so/{năm}/{Lĩnh vực}/{Tên thư mục hồ sơ}/{1_Chỉ đạo|2_Phụ lục|3_Báo cáo đơn vị|4_Triển khai|5_Bản nháp}/*
 Năm được lấy theo "Ngày VB đến" (nếu trống thì lấy theo "Ngày tạo hồ sơ").
 Lĩnh vực trống sẽ được xếp vào thư mục "CHƯA PHÂN LOẠI".
 
@@ -74,7 +74,14 @@ else:
     os.makedirs(HOSO_ROOT, exist_ok=True)
     HOSO_FOLDER_NAME = os.path.basename(HOSO_ROOT)
 
-PORT = 5001
+# Bản chạy thử (xem README): đặt QLCV_HOSO_ROOT, QLCV_DATA_DIR, QLCV_DIST, QLCV_PORT để chạy tách khỏi dữ liệu thật.
+if os.environ.get("QLCV_HOSO_ROOT"):
+    HOSO_ROOT = os.path.normpath(os.environ["QLCV_HOSO_ROOT"])
+    if not os.path.isdir(HOSO_ROOT):
+        raise SystemExit(f"[LOI] QLCV_HOSO_ROOT khong ton tai: {HOSO_ROOT}")
+    HOSO_FOLDER_NAME = "ho-so"
+
+PORT = int(os.environ.get("QLCV_PORT", "5001"))
 
 # Cấu trúc cột chuẩn - đây là "hợp đồng" giữa Excel <-> Web.
 # Nếu đổi tên cột trong Excel, phải sửa lại danh sách này cho khớp.
@@ -106,9 +113,40 @@ LINH_VUC_OPTIONS = [
 
 TRANG_THAI_OPTIONS = ["Đang xử lý", "Đã hoàn thành"]
 
-# Các loại tài liệu gắn với mỗi hồ sơ - đây cũng là tên các thư mục con trong
-# thư mục tài liệu của hồ sơ đó.
-CATEGORIES = ["Văn bản chỉ đạo", "Phụ lục", "Văn bản triển khai", "Báo cáo của các đơn vị"]
+# Các loại tài liệu gắn với mỗi hồ sơ - đây cũng là tên các thư mục con trong thư mục tài liệu của hồ sơ đó.
+# Số đứng đầu để Explorer/Drive sắp xếp đúng quy trình; tên ngắn để đường dẫn trên Drive không quá dài.
+FOLDER_DIRECTIVE = "1_Chỉ đạo"          # văn bản chỉ đạo (văn bản đến)
+FOLDER_APPENDIX = "2_Phụ lục"           # phụ lục kèm văn bản chỉ đạo
+FOLDER_REPORTS = "3_Báo cáo đơn vị"     # báo cáo của CA đơn vị, địa phương (chỉ lưu file)
+FOLDER_RESULT = "4_Triển khai"          # văn bản triển khai (kết quả công việc), kèm phụ lục của nó
+FOLDER_DRAFT = "5_Bản nháp"             # bản nháp, trao đổi, xin ý kiến
+CATEGORIES = [FOLDER_DIRECTIVE, FOLDER_APPENDIX, FOLDER_REPORTS, FOLDER_RESULT, FOLDER_DRAFT]
+DEFAULT_FOLDERS = [FOLDER_DIRECTIVE, FOLDER_APPENDIX, FOLDER_RESULT]  # tạo sẵn cho hồ sơ mới
+# Tên cũ (trước 30/10/2026): vẫn nhận ra để hồ sơ chưa đổi tên thư mục không bị hỏng.
+OLD_FOLDER_NAMES = {
+    "Văn bản chỉ đạo": FOLDER_DIRECTIVE,
+    "Phụ lục": FOLDER_APPENDIX,
+    "Báo cáo của các đơn vị": FOLDER_REPORTS,
+    "Văn bản triển khai": FOLDER_RESULT,
+}
+
+
+def canonical_category(name):
+    """Tên chuẩn của một loại thư mục (nhận cả tên cũ), hoặc None nếu không phải thư mục chuẩn."""
+    if name in CATEGORIES:
+        return name
+    return OLD_FOLDER_NAMES.get(name)
+
+
+def category_dir(folder, canonical):
+    """Thư mục thật của loại tài liệu: tên mới nếu có, không thì tên cũ còn tồn tại, không thì tên mới (sẽ tạo)."""
+    new_path = os.path.join(folder, canonical)
+    if os.path.isdir(new_path):
+        return new_path
+    for old, new in OLD_FOLDER_NAMES.items():
+        if new == canonical and os.path.isdir(os.path.join(folder, old)):
+            return os.path.join(folder, old)
+    return new_path
 
 # Các đuôi file được phép đính kèm - khớp với danh sách "accept" trên giao diện web.
 # PDF xem trước được ngay trên web; các loại còn lại chỉ tải về/mở bằng ứng dụng
@@ -129,16 +167,17 @@ UNCLASSIFIED = "CHƯA PHÂN LOẠI"
 DATA_SHEET_NAME = "Danh_Muc_Ho_So"
 
 
-BACKUP_DIR = os.path.join(BASE_DIR, "backups")
+DATA_DIR = os.environ.get("QLCV_DATA_DIR") or BASE_DIR
+BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 
 # Bản build của giao diện QLCV (tạo bằng `npm run build:flask` trong thư mục frontend).
-QLCV_DIST_DIR = os.path.join(BASE_DIR, "qlcv_dist")
+QLCV_DIST_DIR = os.environ.get("QLCV_DIST") or os.path.join(BASE_DIR, "qlcv_dist")
 
-JSON_PATH = os.path.join(BASE_DIR, "dossiers.json")
+JSON_PATH = os.path.join(DATA_DIR, "dossiers.json")
 
 # data.json giữ các nhóm dữ liệu ngoài hồ sơ (hồ sơ vẫn nằm ở dossiers.json).
 # Tên nhóm khớp với payload của nút "Lưu lên Drive" (QLCV_Cloud_Backup.json).
-DATA_PATH = os.path.join(BASE_DIR, "data.json")
+DATA_PATH = os.path.join(DATA_DIR, "data.json")
 DATA_COLLECTIONS = ["dnisLogs", "mailLogs", "coordLogs", "schedules", "meetings"]
 
 
@@ -381,7 +420,9 @@ def dossier_to_excel_record(d):
         "Kết quả xử lý / VB tham mưu": d.get("finalResult", ""),
         "Ngày tạo hồ sơ": created_at,
         "Hạn xử lý": d.get("deadline", ""),
-        "Ghi chú": d.get("note", d.get("Ghi chú", ""))
+        "Ghi chú": d.get("note", d.get("Ghi chú", "")),
+        # Đường dẫn thư mục đã chốt của hồ sơ (năm/chuyên đề/tên); xem derive_storage_path.
+        "_storagePath": d.get("storagePath", ""),
     }
 
 
@@ -437,11 +478,172 @@ def record_year(row):
 
 
 def folder_path_for(row):
-    """Hồ sơ được lưu theo cấu trúc: static/ho_so/{năm}/{lĩnh vực}/{tên thư mục hồ sơ}/"""
+    """Hồ sơ được lưu theo cấu trúc: static/ho_so/{năm}/{lĩnh vực}/{tên thư mục hồ sơ}/
+
+    Hồ sơ đã có storagePath thì dùng đúng đường dẫn đó, không tính lại từ chuyên đề/ngày,
+    để đổi chuyên đề trong dữ liệu không làm mất liên kết với thư mục trên đĩa.
+    """
+    stored = str(row.get("_storagePath", "")).strip("/")
+    parts = stored.split("/") if stored else []
+    if len(parts) == 3 and all(parts):
+        year, linh_vuc, folder_name = parts
+        return os.path.join(HOSO_ROOT, year, linh_vuc, folder_name), year, linh_vuc, folder_name
     year = record_year(row)
     linh_vuc = str(row.get(LINH_VUC_COL, "")).strip() or UNCLASSIFIED
     folder_name = str(row.get(KEY_COL, "")).strip()
     return os.path.join(HOSO_ROOT, year, linh_vuc, folder_name), year, linh_vuc, folder_name
+
+
+# ---------------------------------------------------------------------------
+# Đường dẫn lưu trữ cố định (storagePath) và di chuyển thư mục khi đổi chuyên đề/tên
+# ---------------------------------------------------------------------------
+FORBIDDEN_NAME_CHARS = set('\\/:*?"<>|')
+MAX_FOLDER_NAME = 150
+OTHER_GROUP = "Khác"  # nhóm hiển thị cho file nằm lẻ ở gốc thư mục hồ sơ
+JUNK_FILE_PREFIXES = (".~lock.", "~$")
+JUNK_FILE_NAMES = {"thumbs.db", "desktop.ini", ".ds_store"}
+
+
+def dossier_year(d):
+    orig = d.get("originalDoc") or {}
+    for val in (orig.get("date"), (d.get("createdAt") or "")[:10]):
+        val = str(val or "").strip()
+        if len(val) >= 4 and val[:4].isdigit():
+            return val[:4]
+    return str(datetime.now().year)
+
+
+def derive_storage_path(d):
+    """năm/chuyên đề/tên thư mục hồ sơ theo dữ liệu hiện tại; rỗng nếu hồ sơ chưa có tên thư mục."""
+    name = str(d.get("folderPath") or d.get("folderName") or "").strip()
+    if not name:
+        return ""
+    topic = str(d.get("category") or "").strip() or UNCLASSIFIED
+    return f"{dossier_year(d)}/{topic}/{name}"
+
+
+def name_problem(label, value):
+    """Trả về mô tả lỗi nếu value không dùng được làm tên thư mục, ngược lại None."""
+    if value in (".", ".."):
+        return f"{label} không hợp lệ"
+    bad = sorted(c for c in set(value) if c in FORBIDDEN_NAME_CHARS)
+    if bad:
+        return f'{label} "{value}" chứa ký tự không được dùng: {" ".join(bad)}'
+    if value != value.strip() or value.endswith("."):
+        return f'{label} "{value}" không được bắt đầu/kết thúc bằng khoảng trắng hoặc dấu chấm'
+    if len(value) > MAX_FOLDER_NAME:
+        return f"{label} dài quá {MAX_FOLDER_NAME} ký tự"
+    return None
+
+
+def storage_dir(path):
+    return os.path.join(HOSO_ROOT, *path.split("/"))
+
+
+def tree_has_files(path):
+    return any(files for _, _, files in os.walk(path))
+
+
+def plan_storage_changes(items, previous):
+    """Duyệt danh sách hồ sơ định ghi: gán storagePath và lập kế hoạch di chuyển thư mục.
+
+    Trả về (errors, moves, creates). Chưa thay đổi gì trên đĩa.
+    - Hồ sơ mới: storagePath = đường dẫn tính từ dữ liệu, cần tạo thư mục chuẩn.
+    - Hồ sơ cũ đổi chuyên đề/năm/tên: thư mục được chuyển theo (từ chối nếu đích đã có file).
+    - storagePath do máy khách gửi lên bị bỏ qua; luôn lấy theo bản đã lưu trên máy chủ.
+    """
+    prev_by_id = {d.get("id"): d for d in previous if d.get("id")}
+    errors, moves, creates = [], [], []
+    seen = {}
+    for item in items:
+        title = (item.get("title") or item.get("id") or "")[:50]
+        prev = prev_by_id.get(item["id"])
+        intended = derive_storage_path(item)
+        current = ""
+        if prev is not None:
+            current = (prev.get("storagePath") or derive_storage_path(prev)).strip("/")
+
+        changed = prev is None or intended != current
+        if changed:
+            problems = [name_problem("Tên thư mục hồ sơ", str(item.get("folderPath") or "").strip()),
+                        name_problem("Chuyên đề", str(item.get("category") or "").strip())] if intended else []
+            problems = [p for p in problems if p]
+            if prev is not None and current and not intended:
+                problems.append("không được xóa trống Tên thư mục hồ sơ của hồ sơ đã có thư mục")
+            if problems:
+                errors.append(f'Hồ sơ "{title}": ' + "; ".join(problems))
+                continue
+
+        final = intended if (changed and intended) else current
+        if final:
+            if final in seen:
+                errors.append(f'Hồ sơ "{title}" dùng trùng thư mục với hồ sơ "{seen[final]}": {final}')
+                continue
+            seen[final] = title
+            item["storagePath"] = final
+        else:
+            item.pop("storagePath", None)
+
+        if not changed or not intended:
+            continue
+        if prev is None:
+            creates.append(final)
+            continue
+        src, dst = storage_dir(current), storage_dir(final)
+        if not os.path.isdir(src):
+            continue  # chưa có thư mục để chuyển
+        if os.path.exists(dst):
+            if os.path.samefile(src, dst):
+                moves.append((src, dst, "case"))  # chỉ đổi hoa/thường
+            elif tree_has_files(dst):
+                errors.append(f'Hồ sơ "{title}": thư mục đích đã có file nên không chuyển được: {final}')
+            else:
+                moves.append((src, dst, "replace_empty"))
+        else:
+            moves.append((src, dst, ""))
+    return errors, moves, creates
+
+
+def rename_with_retry(src, dst, attempts=6):
+    """os.rename có thử lại: trên Windows thư mục có thể bị chương trình khác (diệt virus, Drive, Explorer) giữ vài trăm ms."""
+    for i in range(attempts):
+        try:
+            os.rename(src, dst)
+            return
+        except PermissionError:
+            if i == attempts - 1:
+                raise
+            time.sleep(0.2 * (i + 1))
+
+
+def execute_moves(moves):
+    """Thực hiện các lần chuyển thư mục; nếu một lần lỗi thì hoàn lại các lần đã làm."""
+    done = []
+    try:
+        for src, dst, mode in moves:
+            if mode == "replace_empty":
+                shutil.rmtree(dst)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if mode == "case":
+                tmp = dst + ".doi-ten-tam"
+                rename_with_retry(src, tmp)
+                rename_with_retry(tmp, dst)
+            else:
+                rename_with_retry(src, dst)
+            done.append((src, dst))
+    except Exception:
+        undo_moves(done)
+        raise
+    return done
+
+
+def undo_moves(done):
+    for src, dst in reversed(done):
+        try:
+            os.makedirs(os.path.dirname(src), exist_ok=True)
+            rename_with_retry(dst, src)
+        except Exception as e:
+            print(f"Warning: không hoàn lại được {dst} -> {src}: {e}")
 
 
 def get_hoso_files_map():
@@ -474,16 +676,16 @@ def list_pdfs_for_row(row, files_map=None):
         return {}
     
     # Xác định các thư mục hiển thị cho hồ sơ này
-    # "Báo cáo của các đơn vị" chỉ được hiển thị nếu tồn tại trên đĩa
+    # Thư mục báo cáo đơn vị chỉ được hiển thị nếu tồn tại trên đĩa
     has_bc = False
     if files_map is not None:
-        has_bc = "Báo cáo của các đơn vị" in files_map.get(year, {}).get(linh_vuc, {}).get(folder_name, {})
+        has_bc = FOLDER_REPORTS in files_map.get(year, {}).get(linh_vuc, {}).get(folder_name, {})
     else:
-        has_bc = os.path.isdir(os.path.join(folder, "Báo cáo của các đơn vị"))
+        has_bc = os.path.isdir(os.path.join(folder, FOLDER_REPORTS))
         
-    active_categories = ["Văn bản chỉ đạo", "Phụ lục", "Văn bản triển khai"]
+    active_categories = list(DEFAULT_FOLDERS)
     if has_bc:
-        active_categories.append("Báo cáo của các đơn vị")
+        active_categories.append(FOLDER_REPORTS)
     
     result = {}
     for cat in active_categories:
@@ -515,10 +717,86 @@ def list_pdfs_for_row(row, files_map=None):
     return result
 
 
+# Đường dẫn kho khi xem qua Drive (vd. H:\Other computers\My Laptop\ho-so): chỉ dùng để tính độ dài đường dẫn.
+DRIVE_PREFIX = str(CONFIG.get("DRIVE_PREFIX") or "").strip()
+LONG_PATH_WARN = 230  # Windows lỗi quanh 260; Drive for Desktop/Office dễ lỗi từ ~240
+LONG_NAME_WARN = 70
+
+
+def path_warnings(dest):
+    """Cảnh báo (không chặn) khi file có tên hoặc đường dẫn quá dài trên Drive."""
+    name = os.path.basename(dest)
+    prefix = (DRIVE_PREFIX or HOSO_ROOT).rstrip("\\/")
+    total = len(prefix) + 1 + len(os.path.relpath(dest, HOSO_ROOT))
+    if total > LONG_PATH_WARN:
+        return [f'"{name}": đường dẫn dài {total} ký tự (nên dưới {LONG_PATH_WARN})']
+    if len(name) > LONG_NAME_WARN:
+        return [f'"{name}": tên file dài {len(name)} ký tự (nên dưới {LONG_NAME_WARN})']
+    return []
+
+
+def is_junk_file(name):
+    low = name.lower()
+    return low in JUNK_FILE_NAMES or low.startswith(JUNK_FILE_PREFIXES)
+
+
+def collect_files(group_dir):
+    """Tên file (đường dẫn tương đối, dấu /) trong một nhóm, bỏ file tạm của Office/Windows."""
+    out = []
+    for root, dirs, files in os.walk(group_dir):
+        dirs.sort()
+        for f in sorted(files):
+            if not is_junk_file(f):
+                out.append(os.path.relpath(os.path.join(root, f), group_dir).replace(os.sep, "/"))
+    return out
+
+
+def list_dossier_groups(folder, storage_path):
+    """Mọi file của một hồ sơ, chia nhóm theo thư mục con đúng tên của nó.
+
+    Luôn có 3 nhóm chuẩn (1_Chỉ đạo, 2_Phụ lục, 4_Triển khai); báo cáo đơn vị và bản nháp chỉ khi thư mục đó
+    tồn tại; các thư mục con khác (vd. "Xin ý kiến BTV") hiện đúng tên; file nằm lẻ ở gốc hồ sơ vào nhóm "Khác".
+    Thư mục còn mang tên cũ ("Văn bản chỉ đạo"...) được gộp vào nhóm tên mới tương ứng.
+    """
+    def make(dir_name):
+        group_dir = os.path.join(folder, dir_name)
+        base = f"/static/{HOSO_FOLDER_NAME}/{storage_path}/{dir_name}"
+        return [{"fileName": f, "url": f"{base}/{f}"} for f in collect_files(group_dir)]
+
+    entries = sorted(os.listdir(folder)) if os.path.isdir(folder) else []
+    is_dir = lambda n: os.path.isdir(os.path.join(folder, n))
+    groups = {}
+    for cat in CATEGORIES:
+        names = [n for n in [cat] + [o for o, c in OLD_FOLDER_NAMES.items() if c == cat] if n in entries and is_dir(n)]
+        if names or cat in DEFAULT_FOLDERS:
+            groups[cat] = [item for n in names for item in make(n)]
+    known = set(CATEGORIES) | set(OLD_FOLDER_NAMES)
+    for name in entries:
+        if name not in known and is_dir(name):
+            groups[name] = make(name)
+    loose = [n for n in entries if os.path.isfile(os.path.join(folder, n)) and not is_junk_file(n)]
+    if loose:
+        groups[OTHER_GROUP] = [{"fileName": n, "url": f"/static/{HOSO_FOLDER_NAME}/{storage_path}/{n}"} for n in loose]
+    return groups
+
+
+def resolve_group_dir(folder, category):
+    """Thư mục thật ứng với tên nhóm gửi từ giao diện, hoặc None nếu không hợp lệ."""
+    canonical = canonical_category(category)
+    if canonical:
+        return category_dir(folder, canonical)
+    if not category or category in (".", "..") or any(c in category for c in "\\/:"):
+        return None
+    path = os.path.join(folder, category)
+    if os.path.isdir(path):
+        return path
+    return folder if category == OTHER_GROUP else None
+
+
 def ensure_category_dirs(base_folder):
-    # Chỉ tự động tạo 3 thư mục mặc định khi tạo mới/import
-    for cat in ["Văn bản chỉ đạo", "Phụ lục", "Văn bản triển khai"]:
-        os.makedirs(os.path.join(base_folder, cat), exist_ok=True)
+    # Chỉ tự động tạo 3 thư mục mặc định khi tạo mới/import (nếu đã có thư mục tên cũ thì giữ nguyên, không tạo thêm)
+    for cat in DEFAULT_FOLDERS:
+        os.makedirs(category_dir(base_folder, cat), exist_ok=True)
 
 
 @app.route("/")
@@ -561,20 +839,41 @@ def api_dossiers_get():
 
 @app.route("/api/dossiers", methods=["PUT"])
 def api_dossiers_put():
-    """QLCV ghi cả danh sách hồ sơ. Không đổi tên/di chuyển thư mục tài liệu (việc đó do /api/ho_so/... làm)."""
+    """QLCV ghi cả danh sách hồ sơ.
+
+    Đổi chuyên đề / năm văn bản / tên thư mục của hồ sơ thì thư mục tài liệu được chuyển theo
+    (xem plan_storage_changes). Có lỗi thì không ghi gì và không chuyển gì.
+    """
     items = request.get_json(silent=True)
     if not isinstance(items, list) or not all(isinstance(x, dict) and x.get("id") for x in items):
         return jsonify({"error": "Dữ liệu gửi lên phải là danh sách hồ sơ, mỗi hồ sơ có id."}), 400
     if len({x["id"] for x in items}) != len(items):
         return jsonify({"error": "Danh sách hồ sơ có id trùng nhau."}), 400
-    if not items and load_dossiers():
+    previous = load_dossiers()
+    if not items and previous:
         # Chặn ghi rỗng đè lên dữ liệu đang có (lỗi giao diện hoặc tải dữ liệu chưa xong).
         return jsonify({"error": "Không ghi danh sách rỗng đè lên dữ liệu hiện có."}), 400
+
+    errors, moves, creates = plan_storage_changes(items, previous)
+    if errors:
+        return jsonify({"error": " | ".join(errors)}), 409
+
+    try:
+        done = execute_moves(moves)
+    except Exception as e:
+        return jsonify({"error": f"Không chuyển được thư mục hồ sơ (file đang mở?): {e}"}), 500
     try:
         save_dossiers(items)
-        return jsonify({"ok": True, "count": len(items)})
     except Exception as e:
+        undo_moves(done)
         return jsonify({"error": str(e)}), 500
+
+    for path in creates:
+        try:
+            ensure_category_dirs(storage_dir(path))
+        except Exception as e:
+            print(f"Warning: không tạo được thư mục {path}: {e}")
+    return jsonify({"ok": True, "count": len(items), "moved": [m[1] for m in moves]})
 
 
 @app.route("/api/ho_so", methods=["GET"])
@@ -603,6 +902,8 @@ def api_create():
         return jsonify({"error": f'Tên thư mục hồ sơ "{key}" đã tồn tại'}), 400
 
     new_dossier = excel_record_to_dossier(payload)
+    if derive_storage_path(new_dossier):
+        new_dossier["storagePath"] = derive_storage_path(new_dossier)
     dossiers.append(new_dossier)
     save_dossiers(dossiers)
 
@@ -634,23 +935,24 @@ def api_update(old_key):
     if new_key != old_key and any((d.get("folderPath") or d.get("folderName", "")) == new_key for d in dossiers):
         return jsonify({"error": f'Tên thư mục hồ sơ "{new_key}" đã tồn tại'}), 400
 
-    old_row = dossier_to_excel_record(target_dossier)
-    old_folder, _, _, _ = folder_path_for(old_row)
-
+    import copy
+    before = copy.deepcopy(target_dossier)
     excel_record_to_dossier(payload, target_dossier)
 
-    new_row = dossier_to_excel_record(target_dossier)
-    new_folder, _, _, new_folder_name = folder_path_for(new_row)
-
-    if old_folder != new_folder:
-        if os.path.isdir(old_folder):
-            os.makedirs(os.path.dirname(new_folder), exist_ok=True)
-            os.rename(old_folder, new_folder)
-            ensure_category_dirs(new_folder)
-        elif new_folder_name:
-            ensure_category_dirs(new_folder)
-
-    save_dossiers(dossiers)
+    errors, moves, creates = plan_storage_changes([target_dossier], [before])
+    if errors:
+        return jsonify({"error": " | ".join(errors)}), 409
+    try:
+        done = execute_moves(moves)
+    except Exception as e:
+        return jsonify({"error": f"Không chuyển được thư mục hồ sơ (file đang mở?): {e}"}), 500
+    try:
+        save_dossiers(dossiers)
+    except Exception as e:
+        undo_moves(done)
+        return jsonify({"error": str(e)}), 500
+    for path in creates:
+        ensure_category_dirs(storage_dir(path))
     return jsonify({"ok": True})
 
 
@@ -683,10 +985,10 @@ def api_dossier_files(key):
     if not target_dossier:
         return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
     row = dossier_to_excel_record(target_dossier)
-    pdfs = list_pdfs_for_row(row)
-    for cat in CATEGORIES[:3]:
-        pdfs.setdefault(cat, [])
-    return jsonify({"categories": pdfs})
+    folder, year, linh_vuc, folder_name = folder_path_for(row)
+    if not folder_name:
+        return jsonify({"categories": {cat: [] for cat in DEFAULT_FOLDERS}})
+    return jsonify({"categories": list_dossier_groups(folder, f"{year}/{linh_vuc}/{folder_name}")})
 
 
 @app.route("/api/ho_so/<path:key>/open_folder", methods=["POST"])
@@ -780,8 +1082,13 @@ def api_import():
             
         if matched_dossier:
             existing_id = matched_dossier.get("id") or generate_id()
+            # Import không di chuyển thư mục: giữ nguyên đường dẫn lưu trữ đang có, bỏ qua storagePath trong file.
+            kept_path = matched_dossier.get("storagePath") or derive_storage_path(matched_dossier)
             matched_dossier.clear()
             matched_dossier.update(item)
+            matched_dossier.pop("storagePath", None)
+            if kept_path:
+                matched_dossier["storagePath"] = kept_path
             if "folderName" in matched_dossier:
                 f_name = matched_dossier.pop("folderName")
                 if not matched_dossier.get("folderPath"):
@@ -790,12 +1097,15 @@ def api_import():
             updated_count += 1
         else:
             new_item = item.copy()
+            new_item.pop("storagePath", None)
             if "id" not in new_item or not new_item["id"]:
                 new_item["id"] = generate_id()
             if "folderName" in new_item:
                 f_name = new_item.pop("folderName")
                 if not new_item.get("folderPath"):
                     new_item["folderPath"] = f_name
+            if derive_storage_path(new_item):
+                new_item["storagePath"] = derive_storage_path(new_item)
             dossiers.append(new_item)
             id_map[new_item["id"]] = new_item
             f_val = new_item.get("folderPath")
@@ -836,12 +1146,13 @@ def api_create_category(key):
     if not category:
         return jsonify({"error": "Tên thư mục không được để trống"}), 400
         
-    if category not in CATEGORIES:
+    canonical = canonical_category(category)
+    if not canonical:
         return jsonify({"error": "Thư mục không hợp lệ"}), 400
 
     row = dossier_to_excel_record(target_dossier)
     folder, _, _, _ = folder_path_for(row)
-    cat_dir = os.path.join(folder, category)
+    cat_dir = category_dir(folder, canonical)
     try:
         os.makedirs(cat_dir, exist_ok=True)
         return jsonify({"ok": True})
@@ -862,12 +1173,11 @@ def api_upload_pdf(key):
         return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
 
     category = str(request.form.get("category", "")).strip()
-    if category not in CATEGORIES:
-        return jsonify({"error": "Loại tài liệu không hợp lệ"}), 400
-
     row = dossier_to_excel_record(target_dossier)
     folder, _, _, _ = folder_path_for(row)
-    cat_dir = os.path.join(folder, category)
+    cat_dir = resolve_group_dir(folder, category)
+    if not cat_dir:
+        return jsonify({"error": "Loại tài liệu không hợp lệ"}), 400
     os.makedirs(cat_dir, exist_ok=True)
 
     files = request.files.getlist("files")
@@ -876,6 +1186,7 @@ def api_upload_pdf(key):
 
     saved = []
     skipped = []
+    warnings = []
     for f in files:
         if not f or not f.filename:
             continue
@@ -891,18 +1202,16 @@ def api_upload_pdf(key):
             i += 1
         f.save(dest)
         saved.append(os.path.basename(dest))
+        warnings.extend(path_warnings(dest))
 
     if not saved and not skipped:
         return jsonify({"error": "Chưa chọn file"}), 400
 
-    return jsonify({"ok": True, "saved": saved, "skipped": skipped})
+    return jsonify({"ok": True, "saved": saved, "skipped": skipped, "warnings": warnings})
 
 
 @app.route("/api/ho_so/<path:key>/pdf/<string:category>/<path:filename>", methods=["DELETE"])
 def api_delete_pdf(key, category, filename):
-    if category not in CATEGORIES:
-        return jsonify({"error": "Loại tài liệu không hợp lệ"}), 400
-
     dossiers = load_dossiers()
     target_dossier = None
     for d in dossiers:
@@ -915,8 +1224,11 @@ def api_delete_pdf(key, category, filename):
 
     row = dossier_to_excel_record(target_dossier)
     folder, _, _, _ = folder_path_for(row)
+    group_dir = resolve_group_dir(folder, category)
+    if not group_dir:
+        return jsonify({"error": "Loại tài liệu không hợp lệ"}), 400
     safe_name = safe_pdf_filename(filename)
-    target = os.path.join(folder, category, safe_name)
+    target = os.path.join(group_dir, safe_name)
 
     if not os.path.isfile(target):
         return jsonify({"error": "Không tìm thấy file"}), 404
@@ -1126,5 +1438,6 @@ def open_browser():
 
 
 if __name__ == "__main__":
-    threading.Thread(target=open_browser).start()
+    if not os.environ.get("QLCV_NO_BROWSER"):
+        threading.Thread(target=open_browser).start()
     app.run(host="0.0.0.0", port=PORT, debug=False)

@@ -27,3 +27,14 @@ backend/dossiers_gop_*.json
 
 # Bản build giao diện QLCV cho Flask (tạo lại bằng npm run build:flask)
 backend/qlcv_dist/
+
+backend/bao_cao_kho.html
+
+backend/qlcv_dist_moi/
+
+# Biến môi trường / mật khẩu cục bộ — không bao giờ commit
+.env
+.env.*
+frontend/.env
+frontend/.env.*
+*.local
