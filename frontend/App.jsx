@@ -211,15 +211,15 @@ const App = () => {
         initGoogleAuth(); // Kích hoạt ngầm thư viện Google khi web tải xong
     }, []);
 
-    // Mở nhanh chi tiết 1 hồ sơ qua hash URL (#dossier=<id>) — dùng khi mở ở tab mới từ Sổ kế hoạch
-    const dossiersRef = useRef(dossiers);
-    useEffect(() => { dossiersRef.current = dossiers; }, [dossiers]);
+    // Mở nhanh chi tiết 1 hồ sơ qua hash URL (#dossier=<id>) — dùng khi mở ở tab mới từ Sổ kế hoạch.
+    // Chạy lại mỗi khi danh sách hồ sơ đổi: ở bản chạy qua Flask, hồ sơ được nạp từ máy chủ SAU khi trang vừa mở,
+    // nên lần đọc đầu tiên chưa thấy hồ sơ; đến khi nạp xong thì áp dụng (và xóa #dossier khỏi địa chỉ).
     useEffect(() => {
         const applyHash = () => {
             const m = window.location.hash.match(/^#dossier=(.+)$/);
             if (!m) return;
             const id = decodeURIComponent(m[1]);
-            if (!dossiersRef.current.some(d => d.id === id)) return;
+            if (!dossiers.some(d => d.id === id)) return;
             setActiveDossierId(id);
             setCurrentView('detail');
             history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -227,7 +227,7 @@ const App = () => {
         applyHash();
         window.addEventListener('hashchange', applyHash);
         return () => window.removeEventListener('hashchange', applyHash);
-    }, []);
+    }, [dossiers]);
 
     useEffect(() => {
         if (timerState.isRunning) {

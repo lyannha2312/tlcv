@@ -63,7 +63,7 @@ if %errorlevel% neq 0 (
 :INSTALL_DEPS
 call venv\Scripts\activate.bat
 echo Dang cai dat cac thu vien can thiet - Yeu cau ket noi Internet...
-python -m pip install -r requirements.txt
+python -m pip install --force-reinstall -r requirements.txt
 if %errorlevel% neq 0 (
     echo [LOI] Khong the cai dat cac thu vien. Vui long kiem tra ket noi mang.
     pause
