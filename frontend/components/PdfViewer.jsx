@@ -1,5 +1,6 @@
 import React from 'react';
-import { IconFileText, IconDownload, IconChevronLeft, IconChevronRight, IconX } from '../Icons.jsx';
+import { folderLabel, driveSearchUrl } from '../fileMatch.js';
+import { IconFileText, IconDownload, IconChevronLeft, IconChevronRight, IconX, IconExternalLink } from '../Icons.jsx';
 import { fileExt } from './DossierFiles.jsx';
 
 const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif'];
@@ -27,8 +28,11 @@ const PdfViewer = ({ file, files, onSelect, onClose, overlay }) => {
             <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
                 <IconFileText className="w-12 h-12 text-slate-300" />
                 <p className="text-sm text-slate-600 break-all">{file.fileName}</p>
-                <p className="text-xs text-slate-400">Trình duyệt không xem trực tiếp được loại file này.</p>
-                <a href={file.url} download className="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium"><IconDownload className="w-4 h-4" /> Tải xuống</a>
+                <p className="text-xs text-slate-400">Trình duyệt không xem trực tiếp được loại file này. Nếu file đã có trên Google Drive, mở ở đó để xem ngay trên trình duyệt.</p>
+                <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <a href={driveSearchUrl(file.fileName)} target="_blank" rel="noreferrer" title="Tìm file này trên Google Drive (cần đăng nhập đúng tài khoản)" className="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium"><IconExternalLink className="w-4 h-4" /> Mở trên Drive</a>
+                    <a href={file.url} download className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg text-sm font-medium"><IconDownload className="w-4 h-4" /> Tải xuống</a>
+                </div>
             </div>
         );
     }
@@ -38,7 +42,7 @@ const PdfViewer = ({ file, files, onSelect, onClose, overlay }) => {
             <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50/80">
                 <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-slate-800 truncate" title={file?.fileName}>{file ? file.fileName : 'Xem tài liệu'}</div>
-                    {file && <div className="text-[11px] text-slate-400">{file.category}{files.length > 1 && index >= 0 ? ` · ${index + 1}/${files.length}` : ''}</div>}
+                    {file && <div className="text-[11px] text-slate-400">{folderLabel(file.category)}{files.length > 1 && index >= 0 ? ` · ${index + 1}/${files.length}` : ''}</div>}
                 </div>
                 {file && files.length > 1 && (
                     <div className="flex gap-1 shrink-0">

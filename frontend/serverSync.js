@@ -4,7 +4,9 @@
 const parseError = async (res) => {
     let detail = '';
     try { detail = (await res.json())?.error || ''; } catch (e) { /* bỏ qua */ }
-    return new Error(detail || `Lỗi máy chủ (${res.status})`);
+    const err = new Error(detail || `Lỗi máy chủ (${res.status})`);
+    err.status = res.status;
+    return err;
 };
 
 const getJson = async (path) => {

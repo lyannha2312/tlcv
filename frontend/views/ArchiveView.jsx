@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { CATEGORY_COLORS, CATEGORIES, hasDucatpDoc } from '../helpers.js';
 import dangIcon from '../assets/dang-icon.png';
-import { IconSearch, IconDownload, IconFileText, IconTag, IconCalendar, IconTrash } from '../Icons.jsx';
+import { IconSearch, IconDownload, IconTag, IconCalendar, IconTrash, IconFolder } from '../Icons.jsx';
+import { openDossierFolder } from '../components/DossierFiles.jsx';
 
 const ArchiveView = ({
+    serverMode,
     filteredDossiers,
     searchQuery,
     setSearchQuery,
@@ -153,8 +155,7 @@ const ArchiveView = ({
                                 className="bg-white border border-slate-200 hover:border-brand-300 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md group flex flex-col h-full relative overflow-hidden">
                                 <div className="flex justify-between items-start mb-2.5">
                                     <div className="flex gap-1.5 flex-wrap">
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border flex items-center gap-1.5 ${catTheme.bg} ${catTheme.text} ${catTheme.border}`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${catTheme.dot || 'bg-brand-500'}`}></span>
+                                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded text-white ${catTheme.dot || 'bg-brand-500'}`}>
                                             {dossier.category || 'KHÁC'}
                                         </span>
                                         {dossier.status === 'active' && dossier.priority === 'Cao' && <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">🔴 Khẩn</span>}
@@ -174,12 +175,20 @@ const ArchiveView = ({
                                     <p className="text-sm text-slate-600 line-clamp-2" title={dossier.originalDoc.summary || dossier.originalDoc.content}>{dossier.originalDoc.summary || dossier.originalDoc.content}</p>
                                 </div>
                                 <div className="flex flex-wrap gap-x-3 gap-y-2 text-xs text-slate-500 pl-2 pt-3 border-t border-slate-100 mt-auto">
-                                    <span className="flex items-center gap-1 font-medium bg-slate-50 px-2 py-1 rounded"><IconFileText className="w-3.5 h-3.5"/> {1 + dossier.relatedDocs.length} VB</span>
                                     {dossier.createdAt && <span className="flex items-center gap-1 font-medium bg-slate-50 px-2 py-1 rounded"><IconCalendar className="w-3.5 h-3.5"/> Giao: {new Date(dossier.createdAt).toLocaleDateString('vi-VN')}</span>}
+                                    {serverMode && dossier.folderPath && (
+                                        <button
+                                            onClick={e => { e.stopPropagation(); openDossierFolder(dossier.folderPath); }}
+                                            title="Mở thư mục hồ sơ trên máy"
+                                            className="ml-auto flex items-center gap-1 font-medium text-slate-500 hover:text-brand-600 hover:bg-brand-50 px-2 py-1 rounded transition-colors"
+                                        >
+                                            <IconFolder className="w-3.5 h-3.5"/>
+                                        </button>
+                                    )}
                                     <button
                                         onClick={e => { e.stopPropagation(); requestDeleteDossier(dossier); }}
                                         title="Xóa hồ sơ"
-                                        className="ml-auto flex items-center gap-1 font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded transition-colors"
+                                        className={`${serverMode && dossier.folderPath ? '' : 'ml-auto '}flex items-center gap-1 font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded transition-colors`}
                                     >
                                         <IconTrash className="w-3.5 h-3.5"/> 
                                     </button>

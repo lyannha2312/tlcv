@@ -28,7 +28,7 @@ import MeetingsView from './views/MeetingsView.jsx';
 import PlannerView from './views/PlannerView.jsx';
 import DetailView from './views/DetailView.jsx';
 import { initGoogleAuth, loginAndSync, uploadToDrive, downloadFromDrive } from './driveSync.js';
-import { detectBackend, loadServerData, saveCollection } from './serverSync.js';
+import { detectBackend, loadServerData, loadDossiers, saveCollection } from './serverSync.js';
 import { APP_PASSWORD } from './security.js';
 
 const NAV_ITEMS = [
@@ -191,6 +191,16 @@ const App = () => {
                     await saveCollection(name, items);
                     lastSyncedRef.current[name] = json;
                 } catch (e) {
+                    if (name === 'dossiers' && e.status === 409) {
+                        // Máy chủ từ chối thay đổi hồ sơ (vd. thư mục đích đã có file): nạp lại bản đúng, không giữ giá trị sai trên màn hình.
+                        try {
+                            const fresh = await loadDossiers();
+                            lastSyncedRef.current.dossiers = JSON.stringify(fresh);
+                            setDossiers(fresh);
+                        } catch (reloadError) { /* giữ nguyên, người dùng tải lại trang */ }
+                        alert(`Không lưu được thay đổi hồ sơ:\n${e.message}\n\nHồ sơ đã được trả về như cũ.`);
+                        return;
+                    }
                     showToast('⚠️ Chưa lưu được lên máy chủ: ' + e.message);
                 }
             }, 600);
@@ -657,7 +667,7 @@ const App = () => {
             {/* Thanh điều hướng trên cùng */}
             <header className="bg-white border-b border-slate-200 shrink-0 z-20 flex items-center gap-3 px-3 md:px-4 h-14">
                 <div className="shrink-0">
-                    <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-emerald-500 flex items-center gap-1.5 leading-tight"><IconCheckCircle /> QLCV của Lý</h1>
+                    <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-emerald-500 flex items-center gap-1.5 leading-tight"><IconCheckCircle /> Trợ lý công việc</h1>
                     {serverMode === true && <div className="text-[10px] text-emerald-600 leading-none" title="Dữ liệu được lưu vào dossiers.json và data.json trên máy chạy Flask">● Đang lưu trên máy chủ</div>}
                 </div>
                 <nav className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto">
@@ -705,9 +715,10 @@ const App = () => {
                     </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                <div className="flex-1 overflow-y-auto p-4 md:p-7 pt-2 md:pt-2">
                     {currentView === 'workspace' && (
                         <WorkspaceView
+                            serverMode={serverMode}
                             dossiers={dossiers}
                             activeDossier={activeDossier}
                             setActiveDossierId={setActiveDossierId}
@@ -732,6 +743,7 @@ const App = () => {
 
                     {currentView === 'archive' && (
                         <ArchiveView
+                            serverMode={serverMode}
                             filteredDossiers={filteredDossiers}
                             searchQuery={searchQuery}
                             setSearchQuery={setSearchQuery}
@@ -807,7 +819,6 @@ const App = () => {
                             requestDeleteRelatedDoc={requestDeleteRelatedDoc}
                             updateFinalResult={updateFinalResult}
                             reopenDossier={reopenDossier}
-                            exportDossierToExcel={exportDossierToExcel}
                             exportDossierToJson={exportDossierToJson}
                             treeOpen={treeOpen}
                             serverMode={serverMode}

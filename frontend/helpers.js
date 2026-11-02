@@ -101,3 +101,36 @@ export const mergeById = (current = [], incoming = [], nestedKeys = [], { prepen
     const added = newItems.length;
     return { items: prepend ? [...newItems, ...merged] : [...merged, ...newItems], added, updated, kept: cur.length - updated };
 };
+
+// ---- Tên thư mục hồ sơ ----
+// Quy ước: yyyy-mm-dd(ngày văn bản)_số-ký-hiệu_tên-rút-gọn, không có ký tự cấm của Windows (khớp kiểm tra ở backend/app.py).
+const asciiKeepCase = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// Tên thư mục hồ sơ tối đa 60 ký tự để đường dẫn trên Drive (H:\Other computers\My Laptop\ho-so\...) không quá dài.
+export const MAX_FOLDER_NAME = 60;
+
+export const makeFolderName = ({ docDate, createdAt, docNumber, title }) => {
+    const date = (docDate || createdAt || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const head = `${date}_${asciiKeepCase(docNumber) || 'KO-SO'}`;
+    const room = MAX_FOLDER_NAME - head.length - 1;
+    let short = asciiKeepCase(title).toLowerCase();
+    if (room < 8) return head.slice(0, MAX_FOLDER_NAME);
+    if (short.length > room) {
+        short = short.slice(0, room);
+        const cut = short.lastIndexOf('-');  // cắt ở ranh giới từ, không cắt giữa chữ
+        if (cut > 8) short = short.slice(0, cut);
+    }
+    short = short.replace(/-+$/, '');
+    return short ? `${head}_${short}` : head;
+};
+
+// Trả về mô tả lỗi nếu tên không dùng được làm tên thư mục, ngược lại chuỗi rỗng.
+export const folderNameProblem = (name, maxLen = 150) => {
+    const v = name || '';
+    if (v === '.' || v === '..') return 'Tên thư mục không hợp lệ';
+    const bad = [...new Set(v.split('').filter(c => '\/:*?"<>|'.includes(c)))];
+    if (bad.length) return `Tên thư mục không được chứa: ${bad.join(' ')}`;
+    if (v !== v.trim() || v.endsWith('.')) return 'Tên thư mục không được bắt đầu/kết thúc bằng khoảng trắng hoặc dấu chấm';
+    if (v.length > maxLen) return `Tên thư mục dài quá ${maxLen} ký tự (đường dẫn trên Drive sẽ quá dài)`;
+    return '';
+};

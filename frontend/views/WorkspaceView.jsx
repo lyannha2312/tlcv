@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CATEGORY_COLORS } from '../helpers.js';
-import { FolderPopover } from '../components/FolderPopover.jsx';
+import { openDossierFolder } from '../components/DossierFiles.jsx';
 import {
     IconFolder, IconPlus, IconClock, IconPlay, IconCheckCircle,
     IconCalendar, IconFileText, IconEdit, IconTag, IconChevronLeft
@@ -26,6 +26,7 @@ const ExpandableText = ({ text, clamp = 2, className = '' }) => {
 };
 
 const WorkspaceView = ({
+    serverMode,
     dossiers,
     activeDossier,
     setActiveDossierId,
@@ -99,8 +100,7 @@ const WorkspaceView = ({
                                 return (
                                     <div key={dossier.id} onClick={() => setActiveDossierId(dossier.id)} className="bg-white border border-slate-200 hover:border-brand-300 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md group flex flex-col h-full relative overflow-hidden">
                                         <div className="flex justify-between items-start mb-2">
-                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border flex items-center gap-1.5 ${catTheme.bg} ${catTheme.text} ${catTheme.border}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${catTheme.dot || 'bg-brand-500'}`}></span>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded text-white ${catTheme.dot || 'bg-brand-500'}`}>
                                                 {dossier.category || 'KHÁC'}
                                             </span>
                                             <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -145,8 +145,7 @@ const WorkspaceView = ({
                             {/* Badges + nút sửa */}
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center flex-wrap gap-1.5">
-                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border flex items-center gap-1.5 ${CATEGORY_COLORS[activeDossier.category]?.bg} ${CATEGORY_COLORS[activeDossier.category]?.text} ${CATEGORY_COLORS[activeDossier.category]?.border}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[activeDossier.category]?.dot || 'bg-brand-500'}`}></span>
+                                    <span className={`text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded text-white ${CATEGORY_COLORS[activeDossier.category]?.dot || 'bg-brand-500'}`}>
                                         {activeDossier.category || 'KHÁC'}
                                     </span>
                                     {activeDossier.priority === 'Cao' && <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">🔴 Khẩn</span>}
@@ -177,10 +176,10 @@ const WorkspaceView = ({
                         </div>
                         {/* Footer actions - gom hàng gọn */}
                         <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 flex flex-wrap items-center justify-end gap-2">
-                            {activeDossier.folderPath && (
-                                <FolderPopover folderName={activeDossier.folderPath} />
+                            {serverMode && activeDossier.folderPath && (
+                                <button onClick={() => openDossierFolder(activeDossier.folderPath)} className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg font-medium text-xs shadow-sm transition-colors"><IconFolder className="w-3.5 h-3.5 text-amber-600"/> Mở thư mục</button>
                             )}
-                            <button onClick={() => setCurrentView('detail')} className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-medium text-xs shadow-sm transition-colors"><IconClock className="w-3.5 h-3.5 text-brand-600"/> Xem Timeline</button>
+                            <button onClick={() => setCurrentView('detail')} className="flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 px-3 py-1.5 rounded-lg font-medium text-xs shadow-sm transition-colors"><IconClock className="w-3.5 h-3.5 text-sky-600"/> Xem Timeline</button>
                             <button onClick={() => setDocModalConfig({isOpen: true, data: null})} className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3.5 py-1.5 rounded-lg font-medium shadow-sm text-xs transition-colors"><IconPlus className="w-3.5 h-3.5"/> Cập nhật nội dung xử lý</button>
                         </div>
                     </div>

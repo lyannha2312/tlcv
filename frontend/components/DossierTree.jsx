@@ -40,23 +40,23 @@ const DossierTree = ({ dossiers, activeDossierId, onSelect, onEdit, onCollapse }
                     <div className="relative flex-1">
                         <IconSearch className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Tìm hồ sơ, số văn bản..."
-                            className="w-full pl-8 pr-2 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:bg-white" />
+                            className="w-full pl-8 pr-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:bg-white" />
                     </div>
                     <button onClick={onCollapse} title="Thu gọn danh sách" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"><IconChevronLeft className="w-4 h-4" /></button>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                     <select value={status} onChange={e => { setStatus(e.target.value); setOverrides({}); }}
-                        className="flex-1 text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600">
+                        className="flex-1 text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600">
                         <option value="active">Đang xử lý</option>
                         <option value="archived">Đã kết thúc</option>
                         <option value="all">Tất cả</option>
                     </select>
-                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-1">{total} hồ sơ</span>
+                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-1">{total} hồ sơ</span>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto py-2">
-                {groups.length === 0 && <p className="text-sm text-slate-400 text-center py-8">Không có hồ sơ phù hợp</p>}
+                {groups.length === 0 && <p className="text-xs text-slate-400 text-center py-8">Không có hồ sơ phù hợp</p>}
                 {groups.map(({ cat, items }) => {
                     const hasActive = items.some(d => d.id === activeDossierId);
                     const open = overrides[cat] ?? (status === 'active' || !!query.trim() || hasActive);
@@ -65,19 +65,21 @@ const DossierTree = ({ dossiers, activeDossierId, onSelect, onEdit, onCollapse }
                         <div key={cat} className="mb-0.5">
                             <button onClick={() => setOverrides(o => ({ ...o, [cat]: !open }))}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50">
-                                <span className={`text-[10px] text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`}>▶</span>
+                                <span className={`text-[9px] text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`}>▶</span>
                                 <span className="flex-1 min-w-0">
-                                    <span className={`inline-block max-w-full px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide text-white truncate align-middle ${color.dot || 'bg-brand-500'}`}>{cat}</span>
+                                    <span className={`inline-block max-w-full px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide text-white truncate align-middle ${color.dot || 'bg-brand-500'}`}>{cat}</span>
                                 </span>
-                                <span className="text-xs text-slate-400 font-medium">{items.length}</span>
+                                <span className="text-[11px] text-slate-400 font-medium">{items.length}</span>
                             </button>
                             {open && items.map(d => {
                                 const selected = d.id === activeDossierId;
+                                const urgent = d.priority === 'Cao' && d.status === 'active';
+                                const textColor = urgent ? 'text-red-600' : selected ? 'text-brand-800' : 'text-slate-600';
                                 return (
-                                    <div key={d.id} className={`group flex items-center gap-1 pl-9 pr-2 py-1.5 cursor-pointer border-l-2 text-sm ${selected ? 'bg-brand-50 border-brand-500 text-brand-800 font-medium' : 'border-transparent text-slate-600 hover:bg-slate-50'}`}>
-                                        <span className="flex-1 min-w-0 flex items-start gap-1.5" onClick={() => onSelect(d)} title={d.title}>
-                                            {d.priority === 'Cao' && d.status === 'active' && <span title="Ưu tiên cao" className="text-[10px] mt-0.5 shrink-0">🔴</span>}
-                                            <span className="line-clamp-2 leading-snug">{d.title}</span>
+                                    <div key={d.id} className={`group flex items-center gap-1 pl-6 pr-2 py-1.5 cursor-pointer border-l-2 text-xs ${selected ? 'bg-brand-50 border-brand-500 font-medium' : 'border-transparent hover:bg-slate-50'} ${textColor}`}>
+                                        <span className="flex-1 min-w-0 flex items-start gap-2" onClick={() => onSelect(d)} title={d.title}>
+                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${color.dot || 'bg-brand-500'}`}></span>
+                                            <span className={`line-clamp-2 leading-snug ${urgent ? 'font-semibold' : ''}`}>{d.title}</span>
                                         </span>
                                         <button onClick={() => onEdit(d)} title="Chỉnh sửa hồ sơ" className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-brand-600 shrink-0"><IconEdit className="w-3.5 h-3.5" /></button>
                                     </div>

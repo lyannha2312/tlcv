@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CATEGORIES, ISSUING_UNITS, getLocalDateTimeString, getDateRange } from '../helpers.js';
+import { CATEGORIES, ISSUING_UNITS, getLocalDateTimeString, getDateRange, makeFolderName, folderNameProblem } from '../helpers.js';
 import { useDossierFiles } from './DossierFiles.jsx';
+import { STAGE_CONSULT, DOC_TYPE_CONSULT, REPORTS_FOLDER, FOLDER_DIRECTIVE, RESULT_FOLDER, folderLabel } from '../fileMatch.js';
 
 // ---- DossierForm ----
 export const DossierForm = ({ initialData, onClose, saveDossier }) => {
@@ -14,10 +15,19 @@ export const DossierForm = ({ initialData, onClose, saveDossier }) => {
         setForm(prevForm => ({ ...prevForm, [name]: value }));
     };
 
+    const [folderError, setFolderError] = useState('');
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (form.title) {
-            saveDossier({ title: form.title, category: form.category, priority: form.priority, deadline: form.deadline, createdAt: new Date(form.createdAt).toISOString(), folderPath: form.folderPath, originalDoc: { number: form.docNumber, date: form.docDate, summary: form.docSummary, sender: form.sender, content: form.content } }, initialData?.id);
+            const typed = form.folderPath.trim();
+            // Hồ sơ mới để trống: tự đặt tên theo quy ước. Hồ sơ đã có thư mục thì không được xóa trống (sẽ mất liên kết với file).
+            const folderPath = typed || (initialData?.folderPath ? '' : makeFolderName({ docDate: form.docDate, createdAt: form.createdAt, docNumber: form.docNumber, title: form.title }));
+            // Giới hạn 60 ký tự chỉ áp cho tên mới/tên vừa sửa, để hồ sơ cũ có tên dài vẫn lưu được.
+            const changed = folderPath !== (initialData?.folderPath || '');
+            const problem = !folderPath ? 'Hồ sơ đã có thư mục nên không được để trống tên thư mục' : folderNameProblem(folderPath, changed ? 60 : 150);
+            if (problem) { setFolderError(problem); return; }
+            saveDossier({ title: form.title, category: form.category, priority: form.priority, deadline: form.deadline, createdAt: new Date(form.createdAt).toISOString(), folderPath, originalDoc: { number: form.docNumber, date: form.docDate, summary: form.docSummary, sender: form.sender, content: form.content } }, initialData?.id);
             onClose();
         }
     };
@@ -40,7 +50,8 @@ export const DossierForm = ({ initialData, onClose, saveDossier }) => {
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Đơn vị gửi</label><input type="text" name="sender" value={form.sender} onChange={handleChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-brand-500" /></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Trích yếu văn bản</label><textarea rows="2" name="docSummary" value={form.docSummary} onChange={handleChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-brand-500"></textarea></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung chỉ đạo chi tiết</label><textarea rows="2" name="content" value={form.content} onChange={handleChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-brand-500"></textarea></div>
-            <div><label className="block text-sm font-medium text-slate-700 mb-1">Tên thư mục hồ sơ <span className="font-normal text-slate-400 text-xs">(server tự tìm trên D:\)</span></label><input type="text" name="folderPath" value={form.folderPath} onChange={handleChange} placeholder="VD: HoSo_BaoCao_2026" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-brand-500 font-mono text-sm" /></div>
+            <div><label className="block text-sm font-medium text-slate-700 mb-1">Tên thư mục hồ sơ</label><input type="text" name="folderPath" value={form.folderPath} onChange={e => { handleChange(e); setFolderError(''); }} placeholder={initialData?.folderPath ? '' : 'Để trống: tự đặt theo ngày_số-ký-hiệu_tên'} className={`w-full bg-white border rounded-lg px-4 py-2 focus:ring-1 focus:ring-brand-500 font-mono text-sm ${folderError ? 'border-rose-400' : 'border-slate-300'}`} />
+                {folderError ? <p className="text-xs text-rose-600 mt-1">{folderError}</p> : initialData?.folderPath && <p className="text-xs text-slate-400 mt-1">Đổi chuyên mục, ngày ban hành hoặc tên thư mục sẽ tự chuyển thư mục tài liệu trên đĩa (khi dùng máy chủ).</p>}</div>
             <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button><button type="submit" className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium shadow-md">{initialData ? 'Lưu thay đổi' : 'Tạo Hồ sơ'}</button></div>
         </form>
     );
@@ -51,23 +62,36 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
     const storedFiles = useDossierFiles(serverMode === true && folderPath ? folderPath : null);
     const [activeTab, setActiveTab] = useState(initialData ? initialData.type : 'document');
     const [docForm, setDocForm] = useState(() => {
-        if (initialData && initialData.type === 'document') return { number: initialData.number || '', date: initialData.date || '', sender: initialData.sender || '', content: initialData.content || '', fileName: initialData.fileName || '', note: initialData.note || '', docType: initialData.docType || 'Văn bản đính kèm', filePath: initialData.filePath || '' };
-        return { number: '', date: '', sender: '', content: '', fileName: '', note: '', docType: 'Văn bản đính kèm', filePath: '' };
+        if (initialData && initialData.type === 'document') return { number: initialData.number || '', date: initialData.date || '', sender: initialData.sender || '', content: initialData.content || '', fileName: initialData.fileName || '', note: initialData.note || '', docType: initialData.docType || 'Văn bản đính kèm', filePath: initialData.filePath || '', consultDeadline: initialData.consultDeadline || '' };
+        return { number: '', date: '', sender: '', content: '', fileName: '', note: '', docType: 'Văn bản đính kèm', filePath: '', consultDeadline: '' };
     });
     const [progForm, setProgForm] = useState(() => {
-        if (initialData && initialData.type === 'progress') return { date: initialData.date || new Date().toISOString().split('T')[0], content: initialData.content || '' };
-        return { date: new Date().toISOString().split('T')[0], content: '' };
+        if (initialData && initialData.type === 'progress') return { date: initialData.date || new Date().toISOString().split('T')[0], content: initialData.content || '', consult: initialData.stage === STAGE_CONSULT, consultDeadline: initialData.consultDeadline || '' };
+        return { date: new Date().toISOString().split('T')[0], content: '', consult: false, consultDeadline: '' };
     });
     const [finishForm, setFinishForm] = useState({ date: new Date().toISOString().split('T')[0], result: '' });
     // Thời gian cập nhật (addedAt) — chỉ cho sửa khi đang sửa nội dung đã có
     const [addedAt, setAddedAt] = useState(() => initialData?.addedAt ? getLocalDateTimeString(initialData.addedAt) : '');
 
+    // Hồ sơ đóng thì nên có văn bản chỉ đạo (đầu vào) và văn bản triển khai (kết quả) trong thư mục.
+    const missingFolders = storedFiles.categories ? [FOLDER_DIRECTIVE, RESULT_FOLDER].filter(c => !(storedFiles.categories[c] || []).length).map(folderLabel) : [];
+
     const handleSubmit = (e) => {
         e.preventDefault();
         const isEditing = !!initialData;
         const timeData = isEditing && addedAt ? { addedAt: new Date(addedAt).toISOString() } : {};
-        if (activeTab === 'document' && (docForm.number || isEditing)) { saveRelatedDoc(dossierId, { type: 'document', ...docForm, ...timeData }, initialData?.id); onClose(); }
-        else if (activeTab === 'progress' && (progForm.content || isEditing)) { saveRelatedDoc(dossierId, { type: 'progress', ...progForm, ...timeData }, initialData?.id); onClose(); }
+        if (activeTab === 'document' && (docForm.number || isEditing)) {
+            const { consultDeadline, ...base } = docForm;
+            // Hạn góp ý chỉ lưu cho công văn lấy ý kiến; đổi sang loại khác khi sửa thì xóa hạn cũ.
+            const extra = docForm.docType === DOC_TYPE_CONSULT ? { consultDeadline } : (isEditing ? { consultDeadline: '' } : {});
+            saveRelatedDoc(dossierId, { type: 'document', ...base, ...extra, ...timeData }, initialData?.id); onClose();
+        }
+        else if (activeTab === 'progress' && (progForm.content || isEditing)) {
+            const { consult, consultDeadline, ...base } = progForm;
+            // Chỉ ghi cờ giai đoạn khi cần; sửa mốc cũ bỏ chọn thì xóa cờ.
+            const stage = consult ? { stage: STAGE_CONSULT, consultDeadline } : (isEditing ? { stage: '', consultDeadline: '' } : {});
+            saveRelatedDoc(dossierId, { type: 'progress', ...base, ...stage, ...timeData }, initialData?.id); onClose();
+        }
         else if (activeTab === 'finish' && finishForm.result) { updateFinalResult(dossierId, finishForm.result, finishForm.date); setActiveDossierId(null); onClose(); }
     };
 
@@ -92,7 +116,7 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div><label className="block text-sm font-medium text-slate-700 mb-1">Đơn vị phát hành</label><input type="text" list="issuing-units" value={docForm.sender} onChange={e=>setDocForm({...docForm, sender: e.target.value})} placeholder="Chọn hoặc tự nhập" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500" /><datalist id="issuing-units">{ISSUING_UNITS.map(u => <option key={u} value={u} />)}</datalist></div>
-                            <div><label className="block text-sm font-medium text-slate-700 mb-1">Phân loại</label><select value={docForm.docType} onChange={e=>setDocForm({...docForm, docType: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"><option>Văn bản đính kèm</option><option>Văn bản chỉ đạo mới</option><option>Phụ lục</option><option>Văn bản kết quả</option></select></div>
+                            <div><label className="block text-sm font-medium text-slate-700 mb-1">Phân loại</label><select value={docForm.docType} onChange={e=>setDocForm({...docForm, docType: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"><option>Văn bản đính kèm</option><option>Văn bản chỉ đạo mới</option><option>Phụ lục</option><option>Văn bản kết quả</option><option>{DOC_TYPE_CONSULT}</option></select></div>
                         </div>
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung / Trích yếu</label><textarea rows="2" value={docForm.content} onChange={e=>setDocForm({...docForm, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
                         <div><label className="block text-sm font-medium text-amber-600 mb-1">Ghi chú (Mục đích)</label><textarea rows="2" value={docForm.note} onChange={e=>setDocForm({...docForm, note: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
@@ -102,22 +126,42 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
                                     <option value="">— Không gắn file —</option>
                                     {docForm.fileName && !Object.values(storedFiles.categories).flat().some(f => f.fileName === docForm.fileName) && <option value={docForm.fileName}>{docForm.fileName} (không còn trong kho)</option>}
                                     {Object.entries(storedFiles.categories).map(([cat, list]) => list.length > 0 && (
-                                        <optgroup key={cat} label={cat}>{list.map(f => <option key={f.fileName} value={f.fileName}>{f.fileName}</option>)}</optgroup>
+                                        <optgroup key={cat} label={folderLabel(cat)}>{list.map(f => <option key={f.fileName} value={f.fileName}>{f.fileName}</option>)}</optgroup>
                                     ))}
                                 </select>
                             </div>
                         )}
-                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Đường dẫn file</label><input type="text" value={docForm.filePath} onChange={e=>setDocForm({...docForm, filePath: e.target.value})} placeholder="VD: D:\HoSo\2026\VanBan.docx" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500 font-mono text-sm" /></div>
+                        {docForm.docType === DOC_TYPE_CONSULT && (
+                            <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
+                                <p className="text-xs text-violet-700">Các file trong thư mục "{REPORTS_FOLDER}" sẽ được đếm và hiện ngay dưới văn bản này trên nhật ký xử lý.</p>
+                                <div><label className="block text-xs font-medium text-slate-600 mb-1">Hạn góp ý (nếu có)</label><input type="date" value={docForm.consultDeadline} onChange={e=>setDocForm({...docForm, consultDeadline: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-violet-500" /></div>
+                            </div>
+                        )}
+                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Đường dẫn file</label><input type="text" value={docForm.filePath} onChange={e=>setDocForm({...docForm, filePath: e.target.value})} placeholder="Đường dẫn trên máy hoặc link Google Drive (https://...)" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500 font-mono text-sm" /></div>
                     </>
                 )}
                 {activeTab === 'progress' && (
                     <>
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Ngày thực hiện</label><input type="date" value={progForm.date} onChange={e=>setProgForm({...progForm, date: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-amber-500" /></div>
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung đang thực hiện / Kết quả <span className="text-rose-500">*</span></label><textarea rows="4" value={progForm.content} onChange={e=>setProgForm({...progForm, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-amber-500"></textarea></div>
+                        <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
+                            <label className="flex items-start gap-2 text-sm font-medium text-violet-800 cursor-pointer">
+                                <input type="checkbox" checked={progForm.consult} onChange={e=>setProgForm({...progForm, consult: e.target.checked})} className="mt-0.5" />
+                                <span>Đây là giai đoạn lấy ý kiến đơn vị / địa phương<span className="block text-xs font-normal text-violet-600">Các file trong thư mục "{REPORTS_FOLDER}" sẽ được đếm và hiện ngay tại mốc này. Không cần nhập từng đơn vị.</span></span>
+                            </label>
+                            {progForm.consult && (
+                                <div><label className="block text-xs font-medium text-slate-600 mb-1">Hạn góp ý (nếu có)</label><input type="date" value={progForm.consultDeadline} onChange={e=>setProgForm({...progForm, consultDeadline: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-violet-500" /></div>
+                            )}
+                        </div>
                     </>
                 )}
                 {activeTab === 'finish' && (
                     <>
+                        {missingFolders.length > 0 && (
+                            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                ⚠️ Thư mục hồ sơ chưa có file ở: <strong>{missingFolders.join(', ')}</strong>. Bạn vẫn có thể đóng hồ sơ, nhưng nên bổ sung để lưu trữ đầy đủ.
+                            </div>
+                        )}
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Ngày đóng hồ sơ</label><input type="date" value={finishForm.date} onChange={e=>setFinishForm({...finishForm, date: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-slate-500" /></div>
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Kết quả thực hiện / Văn bản báo cáo <span className="text-rose-500">*</span></label><textarea rows="4" value={finishForm.result} onChange={e=>setFinishForm({...finishForm, result: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-slate-500"></textarea></div>
                     </>

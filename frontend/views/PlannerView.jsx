@@ -1,5 +1,6 @@
 import React from 'react';
 import { getDayName, getMonday } from '../helpers.js';
+import { DOC_TYPE_CONSULT } from '../fileMatch.js';
 import {
     IconCalendar, IconPlus, IconEdit, IconTrash,
     IconChevronLeft, IconChevronRight, IconExternalLink,
@@ -72,10 +73,10 @@ const PlannerView = ({
             d.relatedDocs.forEach(rd => {
                 if (rd.type === 'progress' && rd.addedAt?.startsWith(dateStr)) {
                     updates.push(`Tiến độ: ${rd.content}`);
-                } else if (rd.type === 'document' && rd.docType === 'Văn bản kết quả') {
+                } else if (rd.type === 'document' && (rd.docType === 'Văn bản kết quả' || rd.docType === DOC_TYPE_CONSULT)) {
                     const day = (rd.date || rd.addedAt || '').slice(0, 10);
                     if (day === dateStr && day !== closeDay) {
-                        let u = `Văn bản kết quả: ${rd.number || '(chưa có số)'}`;
+                        let u = `${rd.docType === DOC_TYPE_CONSULT ? 'Lấy ý kiến' : 'Văn bản kết quả'}: ${rd.number || '(chưa có số)'}`;
                         if (rd.content) u += ` - ${rd.content}`;
                         if (rd.note) u += ` (Ghi chú: ${rd.note})`;
                         updates.push(u);
