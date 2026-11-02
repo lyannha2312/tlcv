@@ -46,7 +46,7 @@ if %errorlevel% neq 0 (
 )
 
 rem Kiem tra neu thieu thu vien trong moi truong ao
-venv\Scripts\python.exe -c "import flask, pandas, openpyxl" >nul 2>nul
+venv\Scripts\python.exe -c "import flask" >nul 2>nul
 if %errorlevel% neq 0 goto :INSTALL_DEPS
 
 goto :VENV_OK
