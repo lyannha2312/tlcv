@@ -254,5 +254,28 @@ class LuuTruTest(unittest.TestCase):
         self.assertEqual(r.get_json()["warnings"], [])
 
 
+    # --- trang GitHub Pages gọi mở thư mục ---
+    def test_chi_trang_pages_cua_ban_duoc_goi_mo_thu_muc(self):
+        pages = "https://lyannha2312.github.io"
+        r = self.client.options("/api/ho_so/f1/open_folder", headers={"Origin": pages, "Access-Control-Request-Method": "POST",
+                                                                       "Access-Control-Request-Private-Network": "true"})
+        self.assertEqual(r.headers.get("Access-Control-Allow-Origin"), pages)
+        self.assertEqual(r.headers.get("Access-Control-Allow-Private-Network"), "true")
+        r = self.client.post("/api/ho_so/khong-co/open_folder", headers={"Origin": pages})
+        self.assertEqual(r.status_code, 404)  # hồ sơ không có, nhưng CORS vẫn cho trang đọc được lời báo lỗi
+        self.assertEqual(r.headers.get("Access-Control-Allow-Origin"), pages)
+        for origin in ("https://evil.example", "https://lyannha2312.github.io.evil.example", ""):
+            r = self.client.options("/api/ho_so/f1/open_folder", headers={"Origin": origin} if origin else {})
+            self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"), origin)
+
+    def test_trang_pages_khong_duoc_goi_cac_api_khac(self):
+        pages = "https://lyannha2312.github.io"
+        for path in ("/api/dossiers", "/api/ho_so/f1/files"):
+            r = self.client.get(path, headers={"Origin": pages})
+            self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"), path)
+        r = self.client.options("/api/dossiers", headers={"Origin": pages})
+        self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"))
+
+
 if __name__ == "__main__":
     unittest.main()

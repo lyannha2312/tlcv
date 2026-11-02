@@ -15,13 +15,21 @@ export const fileExt = (name) => { const dot = name.lastIndexOf('.'); return dot
 
 const dossierApiBase = (folderPath) => folderPath ? `/api/ho_so/${encodeURIComponent(folderPath).replace(/%2F/g, '/')}` : null;
 
-// Mở thư mục hồ sơ trong Explorer (chỉ chạy được khi dùng server Flask trên chính máy này).
-export const openDossierFolder = async (folderPath) => {
+// Flask chạy trên chính máy này. Bản chạy qua Flask gọi địa chỉ tương đối; bản GitHub Pages / npm run dev gọi sang đây
+// (Flask phải đang chạy; backend chỉ cho trang lyannha2312.github.io gọi riêng chức năng mở thư mục).
+const LOCAL_FLASK = 'http://localhost:5001';
+
+// Mở thư mục hồ sơ trong Explorer. Không kết nối được máy chủ (hoặc máy chủ không có hồ sơ này) thì copy tên thư mục để tự tìm.
+export const openDossierFolder = async (folderPath, serverMode = true) => {
     try {
-        const res = await fetch(`${dossierApiBase(folderPath)}/open_folder`, { method: 'POST' });
+        const res = await fetch(`${serverMode ? '' : LOCAL_FLASK}${dossierApiBase(folderPath)}/open_folder`, { method: 'POST' });
         if (!res.ok) throw await parseError(res);
     } catch (e) {
-        alert('Không mở được thư mục: ' + e.message);
+        if (serverMode) { alert('Không mở được thư mục: ' + e.message); return; }
+        let copied = false;
+        try { await navigator.clipboard.writeText(folderPath); copied = true; } catch (err) { /* trình duyệt không cho copy */ }
+        const reason = e.status ? e.message : 'Chưa kết nối được máy chủ trên máy này (localhost:5001). Hãy mở backend\\Mo_KhoHoSo.bat rồi thử lại.';
+        alert(`Không mở được thư mục.\n${reason}\n\n${copied ? 'Đã copy tên thư mục để bạn tự tìm' : 'Tên thư mục'}: ${folderPath}`);
     }
 };
 

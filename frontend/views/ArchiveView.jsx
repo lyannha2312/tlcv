@@ -176,9 +176,9 @@ const ArchiveView = ({
                                 </div>
                                 <div className="flex flex-wrap gap-x-3 gap-y-2 text-xs text-slate-500 pl-2 pt-3 border-t border-slate-100 mt-auto">
                                     {dossier.createdAt && <span className="flex items-center gap-1 font-medium bg-slate-50 px-2 py-1 rounded"><IconCalendar className="w-3.5 h-3.5"/> Giao: {new Date(dossier.createdAt).toLocaleDateString('vi-VN')}</span>}
-                                    {serverMode && dossier.folderPath && (
+                                    {dossier.folderPath && (
                                         <button
-                                            onClick={e => { e.stopPropagation(); openDossierFolder(dossier.folderPath); }}
+                                            onClick={e => { e.stopPropagation(); openDossierFolder(dossier.folderPath, serverMode === true); }}
                                             title="Mở thư mục hồ sơ trên máy"
                                             className="ml-auto flex items-center gap-1 font-medium text-slate-500 hover:text-brand-600 hover:bg-brand-50 px-2 py-1 rounded transition-colors"
                                         >
@@ -188,7 +188,7 @@ const ArchiveView = ({
                                     <button
                                         onClick={e => { e.stopPropagation(); requestDeleteDossier(dossier); }}
                                         title="Xóa hồ sơ"
-                                        className={`${serverMode && dossier.folderPath ? '' : 'ml-auto '}flex items-center gap-1 font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded transition-colors`}
+                                        className={`${dossier.folderPath ? '' : 'ml-auto '}flex items-center gap-1 font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded transition-colors`}
                                     >
                                         <IconTrash className="w-3.5 h-3.5"/> 
                                     </button>

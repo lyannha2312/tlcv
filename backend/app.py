@@ -799,6 +799,24 @@ def ensure_category_dirs(base_folder):
         os.makedirs(category_dir(base_folder, cat), exist_ok=True)
 
 
+# Trang GitHub Pages của bạn (và bản dev) được gọi RIÊNG chức năng "mở thư mục" trên Flask chạy ở máy này.
+# Các đường dẫn khác không mở cho trang ngoài; Origin lạ không được thêm header nào.
+PAGES_ORIGINS = {"https://lyannha2312.github.io", "http://localhost:5173"}
+
+
+@app.after_request
+def allow_pages_open_folder(response):
+    if (request.method in ("POST", "OPTIONS") and request.path.startswith("/api/ho_so/")
+            and request.path.endswith("/open_folder")):
+        origin = request.headers.get("Origin", "")
+        if origin in PAGES_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            response.headers["Access-Control-Allow-Private-Network"] = "true"  # Chrome: trang công khai gọi localhost
+            response.headers["Vary"] = "Origin"
+    return response
+
+
 @app.route("/")
 def index():
     """Giao diện QLCV (bản build của frontend). Chưa build thì hướng dẫn cách build."""

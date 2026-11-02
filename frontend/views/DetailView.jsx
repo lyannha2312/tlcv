@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatDate, CATEGORY_COLORS, getLocalDateTimeString } from '../helpers.js';
-import DossierFiles, { useDossierFiles, FileChip } from '../components/DossierFiles.jsx';
+import DossierFiles, { useDossierFiles, FileChip, openDossierFolder } from '../components/DossierFiles.jsx';
 import PdfViewer from '../components/PdfViewer.jsx';
 import { attachFiles, STAGE_CONSULT, DOC_TYPE_CONSULT, REPORTS_FOLDER, isConsultRaw, folderLabel, isWebLink } from '../fileMatch.js';
 import dangIcon from '../assets/dang-icon.png';
@@ -221,8 +221,8 @@ const DetailView = ({
                 </div>
                 {/* Footer actions */}
                 <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-2 flex items-center justify-end gap-2">
-                    {withViewer && (
-                        <button onClick={files.openFolder}
+                    {activeDossier.folderPath && (
+                        <button onClick={() => openDossierFolder(activeDossier.folderPath, serverMode === true)}
                             className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-medium shadow-sm text-xs">
                             <IconFolder className="w-3.5 h-3.5 text-brand-600"/> Mở thư mục trên máy
                         </button>

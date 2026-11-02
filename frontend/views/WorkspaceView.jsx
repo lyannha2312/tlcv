@@ -176,8 +176,8 @@ const WorkspaceView = ({
                         </div>
                         {/* Footer actions - gom hàng gọn */}
                         <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 flex flex-wrap items-center justify-end gap-2">
-                            {serverMode && activeDossier.folderPath && (
-                                <button onClick={() => openDossierFolder(activeDossier.folderPath)} className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg font-medium text-xs shadow-sm transition-colors"><IconFolder className="w-3.5 h-3.5 text-amber-600"/> Mở thư mục</button>
+                            {activeDossier.folderPath && (
+                                <button onClick={() => openDossierFolder(activeDossier.folderPath, serverMode === true)} className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg font-medium text-xs shadow-sm transition-colors"><IconFolder className="w-3.5 h-3.5 text-amber-600"/> Mở thư mục</button>
                             )}
                             <button onClick={() => setCurrentView('detail')} className="flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 px-3 py-1.5 rounded-lg font-medium text-xs shadow-sm transition-colors"><IconClock className="w-3.5 h-3.5 text-sky-600"/> Xem Timeline</button>
                             <button onClick={() => setDocModalConfig({isOpen: true, data: null})} className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3.5 py-1.5 rounded-lg font-medium shadow-sm text-xs transition-colors"><IconPlus className="w-3.5 h-3.5"/> Cập nhật nội dung xử lý</button>
