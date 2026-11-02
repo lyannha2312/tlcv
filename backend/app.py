@@ -799,21 +799,31 @@ def ensure_category_dirs(base_folder):
         os.makedirs(category_dir(base_folder, cat), exist_ok=True)
 
 
-# Trang GitHub Pages của bạn (và bản dev) được gọi RIÊNG chức năng "mở thư mục" trên Flask chạy ở máy này.
-# Các đường dẫn khác không mở cho trang ngoài; Origin lạ không được thêm header nào.
+# Trang GitHub Pages của bạn (và bản dev) được gọi RIÊNG ba việc trên Flask chạy ở máy này, đều không ghi/xóa gì:
+#   mở thư mục hồ sơ (POST), xem danh sách file của hồ sơ (GET), xem nội dung file trong kho (GET).
+# Tải lên, xóa, ghi dữ liệu, danh sách hồ sơ... không mở cho trang ngoài. Origin lạ không được thêm header nào.
 PAGES_ORIGINS = {"https://lyannha2312.github.io", "http://localhost:5173"}
 
 
+def pages_allowed_methods(path):
+    if path.startswith("/api/ho_so/") and path.endswith("/open_folder"):
+        return "POST, OPTIONS"
+    if path.startswith("/api/ho_so/") and path.endswith("/files"):
+        return "GET, OPTIONS"
+    if path.startswith(("/static/ho-so/", "/static/ho_so/")):
+        return "GET, OPTIONS"
+    return None
+
+
 @app.after_request
-def allow_pages_open_folder(response):
-    if (request.method in ("POST", "OPTIONS") and request.path.startswith("/api/ho_so/")
-            and request.path.endswith("/open_folder")):
-        origin = request.headers.get("Origin", "")
-        if origin in PAGES_ORIGINS:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-            response.headers["Access-Control-Allow-Private-Network"] = "true"  # Chrome: trang công khai gọi localhost
-            response.headers["Vary"] = "Origin"
+def allow_pages_read_only(response):
+    methods = pages_allowed_methods(request.path)
+    origin = request.headers.get("Origin", "")
+    if methods and origin in PAGES_ORIGINS and (request.method == "OPTIONS" or request.method in methods):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = methods
+        response.headers["Access-Control-Allow-Private-Network"] = "true"  # Chrome: trang công khai gọi localhost
+        response.headers["Vary"] = "Origin"
     return response
 
 
@@ -1442,7 +1452,11 @@ def api_data_import():
 @app.route("/static/ho-so/<path:subpath>")
 @app.route("/static/ho_so/<path:subpath>")
 def serve_pdf(subpath):
-    full_path = os.path.join(HOSO_ROOT, subpath)
+    # Chỉ phục vụ file nằm TRONG kho hồ sơ: chặn "../" và liên kết thư mục trỏ ra ngoài.
+    root = os.path.realpath(HOSO_ROOT)
+    full_path = os.path.realpath(os.path.join(HOSO_ROOT, subpath))
+    if os.path.commonpath([root, full_path]) != root:
+        abort(404)
     directory = os.path.dirname(full_path)
     filename = os.path.basename(full_path)
     if not os.path.isfile(full_path):
@@ -1458,4 +1472,6 @@ def open_browser():
 if __name__ == "__main__":
     if not os.environ.get("QLCV_NO_BROWSER"):
         threading.Thread(target=open_browser).start()
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    # Mặc định chỉ máy này truy cập được (không mật khẩu nên không mở cho mạng LAN).
+    # Muốn dùng từ máy khác trong mạng: đặt "HOST": "0.0.0.0" trong config.json (hoặc biến môi trường QLCV_HOST).
+    app.run(host=os.environ.get("QLCV_HOST") or CONFIG.get("HOST") or "127.0.0.1", port=PORT, debug=False)

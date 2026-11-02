@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatDate, CATEGORY_COLORS, getLocalDateTimeString } from '../helpers.js';
-import DossierFiles, { useDossierFiles, FileChip, openDossierFolder } from '../components/DossierFiles.jsx';
+import DossierFiles, { useDossierFiles, useLocalFilesOptIn, FileChip, openDossierFolder } from '../components/DossierFiles.jsx';
 import PdfViewer from '../components/PdfViewer.jsx';
 import { attachFiles, STAGE_CONSULT, DOC_TYPE_CONSULT, REPORTS_FOLDER, isConsultRaw, folderLabel, isWebLink } from '../fileMatch.js';
 import dangIcon from '../assets/dang-icon.png';
@@ -87,8 +87,11 @@ const DetailView = ({
     const [resultDraft, setResultDraft] = useState('');
     const [pickedFile, setPickedFile] = useState(null);
     const [viewerVisible, setViewerVisible] = useState(true);
-    const withViewer = serverMode === true && !!activeDossier?.folderPath;
-    const files = useDossierFiles(withViewer ? activeDossier.folderPath : null);
+    // Trang GitHub Pages (serverMode === false) không có tài liệu; chỉ khi người dùng bật mới đọc từ Flask trên máy này.
+    const [localOn, setLocalOn] = useLocalFilesOptIn();
+    const remote = serverMode === false && localOn;
+    const withViewer = (serverMode === true || remote) && !!activeDossier?.folderPath;
+    const files = useDossierFiles(withViewer ? activeDossier.folderPath : null, remote);
 
     useEffect(() => { setPickedFile(null); }, [activeDossier?.id]);
 
@@ -221,6 +224,13 @@ const DetailView = ({
                 </div>
                 {/* Footer actions */}
                 <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-2 flex items-center justify-end gap-2">
+                    {serverMode === false && activeDossier.folderPath && (
+                        <button onClick={() => setLocalOn(!localOn)}
+                            title="Trang này không chứa tài liệu. Bật để đọc tài liệu từ máy của bạn (cần mở Mo_KhoHoSo.bat; chỉ đọc)"
+                            className={`flex items-center gap-1.5 border px-3 py-1.5 rounded-lg font-medium shadow-sm text-xs ${localOn ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'}`}>
+                            <IconFileText className="w-3.5 h-3.5"/> {localOn ? 'Đang xem tài liệu từ máy · Tắt' : 'Xem tài liệu từ máy'}
+                        </button>
+                    )}
                     {activeDossier.folderPath && (
                         <button onClick={() => openDossierFolder(activeDossier.folderPath, serverMode === true)}
                             className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-medium shadow-sm text-xs">

@@ -254,27 +254,55 @@ class LuuTruTest(unittest.TestCase):
         self.assertEqual(r.get_json()["warnings"], [])
 
 
-    # --- trang GitHub Pages gọi mở thư mục ---
-    def test_chi_trang_pages_cua_ban_duoc_goi_mo_thu_muc(self):
-        pages = "https://lyannha2312.github.io"
-        r = self.client.options("/api/ho_so/f1/open_folder", headers={"Origin": pages, "Access-Control-Request-Method": "POST",
-                                                                       "Access-Control-Request-Private-Network": "true"})
-        self.assertEqual(r.headers.get("Access-Control-Allow-Origin"), pages)
-        self.assertEqual(r.headers.get("Access-Control-Allow-Private-Network"), "true")
-        r = self.client.post("/api/ho_so/khong-co/open_folder", headers={"Origin": pages})
-        self.assertEqual(r.status_code, 404)  # hồ sơ không có, nhưng CORS vẫn cho trang đọc được lời báo lỗi
-        self.assertEqual(r.headers.get("Access-Control-Allow-Origin"), pages)
-        for origin in ("https://evil.example", "https://lyannha2312.github.io.evil.example", ""):
-            r = self.client.options("/api/ho_so/f1/open_folder", headers={"Origin": origin} if origin else {})
-            self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"), origin)
+    # --- trang GitHub Pages (chỉ đọc) ---
+    PAGES = "https://lyannha2312.github.io"
 
-    def test_trang_pages_khong_duoc_goi_cac_api_khac(self):
-        pages = "https://lyannha2312.github.io"
-        for path in ("/api/dossiers", "/api/ho_so/f1/files"):
-            r = self.client.get(path, headers={"Origin": pages})
-            self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"), path)
-        r = self.client.options("/api/dossiers", headers={"Origin": pages})
+    def test_trang_pages_duoc_mo_thu_muc_xem_danh_sach_va_xem_file(self):
+        self.put([make_dossier("a", "f1")])
+        self.write("2026/GÓP Ý/f1/1_Chỉ đạo/a.pdf", "noi dung")
+        h = {"Origin": self.PAGES}
+        r = self.client.options("/api/ho_so/f1/open_folder", headers={**h, "Access-Control-Request-Method": "POST",
+                                                                       "Access-Control-Request-Private-Network": "true"})
+        self.assertEqual(r.headers.get("Access-Control-Allow-Origin"), self.PAGES)
+        self.assertEqual(r.headers.get("Access-Control-Allow-Private-Network"), "true")
+        r = self.client.post("/api/ho_so/khong-co/open_folder", headers=h)
+        self.assertEqual((r.status_code, r.headers.get("Access-Control-Allow-Origin")), (404, self.PAGES))
+        r = self.client.get("/api/ho_so/f1/files", headers=h)
+        self.assertEqual((r.status_code, r.headers.get("Access-Control-Allow-Origin")), (200, self.PAGES))
+        r = self.client.get("/static/ho-so/2026/GÓP Ý/f1/1_Chỉ đạo/a.pdf", headers=h)
+        self.assertEqual((r.status_code, r.headers.get("Access-Control-Allow-Origin")), (200, self.PAGES))
+        r.close()
+
+    def test_origin_la_khong_duoc_cors(self):
+        self.put([make_dossier("a", "f1")])
+        for origin in ("https://evil.example", "https://lyannha2312.github.io.evil.example", "http://lyannha2312.github.io"):
+            for method, path in (("options", "/api/ho_so/f1/open_folder"), ("get", "/api/ho_so/f1/files"), ("get", "/static/ho-so/x")):
+                r = getattr(self.client, method)(path, headers={"Origin": origin})
+                self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"), (origin, path))
+
+    def test_trang_pages_khong_ghi_xoa_hay_doc_danh_sach_ho_so(self):
+        self.put([make_dossier("a", "f1")])
+        h = {"Origin": self.PAGES}
+        for method, path in (("get", "/api/dossiers"), ("put", "/api/dossiers"), ("post", "/api/ho_so/f1/upload"),
+                             ("delete", "/api/ho_so/f1/pdf/1_Chỉ đạo/a.pdf"), ("get", "/api/data"), ("post", "/api/ho_so/f1/files")):
+            r = getattr(self.client, method)(path, headers=h)
+            self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"), (method, path))
+        # GET vào endpoint chỉ cho POST (và ngược lại) cũng không được cấp quyền
+        r = self.client.get("/api/ho_so/f1/open_folder", headers=h)
         self.assertIsNone(r.headers.get("Access-Control-Allow-Origin"))
+
+    # --- không đọc được file ngoài kho ---
+    def test_khong_doc_duoc_file_ngoai_kho_bang_duong_dan_chua_cham_cham(self):
+        secret = os.path.join(self.tmp, "bi-mat.txt")
+        with open(secret, "w", encoding="utf-8") as f:
+            f.write("khong duoc lo")
+        self.write("2026/GÓP Ý/f1/1_Chỉ đạo/a.pdf", "ok")
+        self.assertEqual(self.client.get("/static/ho-so/2026/GÓP Ý/f1/1_Chỉ đạo/a.pdf").status_code, 200)
+        for bad in ("/static/ho-so/../bi-mat.txt", "/static/ho-so/%2e%2e/bi-mat.txt",
+                    "/static/ho-so/2026/../../bi-mat.txt", "/static/ho_so/../bi-mat.txt"):
+            r = self.client.get(bad)
+            self.assertEqual(r.status_code, 404, bad)
+            self.assertNotIn(b"khong duoc lo", r.data, bad)
 
 
 if __name__ == "__main__":

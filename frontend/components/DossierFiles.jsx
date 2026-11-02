@@ -17,7 +17,15 @@ const dossierApiBase = (folderPath) => folderPath ? `/api/ho_so/${encodeURICompo
 
 // Flask chạy trên chính máy này. Bản chạy qua Flask gọi địa chỉ tương đối; bản GitHub Pages / npm run dev gọi sang đây
 // (Flask phải đang chạy; backend chỉ cho trang lyannha2312.github.io gọi riêng chức năng mở thư mục).
-const LOCAL_FLASK = 'http://localhost:5001';
+export const LOCAL_FLASK = 'http://localhost:5001';
+
+// Trang GitHub Pages không chứa tài liệu. Người dùng BẬT thủ công (mặc định tắt) để trang đọc tài liệu từ Flask trên máy này, chỉ đọc.
+const OPT_IN_KEY = 'tlcv_xem_tai_lieu_tu_may';
+export const useLocalFilesOptIn = () => {
+    const [on, setOn] = useState(() => { try { return localStorage.getItem(OPT_IN_KEY) === '1'; } catch (e) { return false; } });
+    const set = (value) => { setOn(value); try { localStorage.setItem(OPT_IN_KEY, value ? '1' : '0'); } catch (e) { /* bỏ qua */ } };
+    return [on, set];
+};
 
 // Mở thư mục hồ sơ trong Explorer. Không kết nối được máy chủ (hoặc máy chủ không có hồ sơ này) thì copy tên thư mục để tự tìm.
 export const openDossierFolder = async (folderPath, serverMode = true) => {
@@ -34,30 +42,35 @@ export const openDossierFolder = async (folderPath, serverMode = true) => {
 };
 
 // Đọc danh sách file của một hồ sơ từ Flask. folderPath = null thì không làm gì.
-export const useDossierFiles = (folderPath) => {
+// remote = true: trang đang chạy ở nơi khác (GitHub Pages) nên gọi sang Flask trên máy này và chỉ đọc.
+export const useDossierFiles = (folderPath, remote = false) => {
     const [categories, setCategories] = useState(null);
     const [error, setError] = useState('');
     const apiBase = dossierApiBase(folderPath);
+    const origin = remote ? LOCAL_FLASK : '';
 
     const reload = useCallback(async () => {
         if (!apiBase) { setCategories(null); return; }
         setError('');
         try {
-            const res = await fetch(`${apiBase}/files`, { headers: { Accept: 'application/json' } });
+            const res = await fetch(`${origin}${apiBase}/files`, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw await parseError(res);
-            setCategories((await res.json()).categories);
+            const data = (await res.json()).categories;
+            // Địa chỉ file trả về là đường dẫn tương đối của Flask; ghép thêm địa chỉ máy chủ khi gọi từ trang khác.
+            setCategories(!remote ? data : Object.fromEntries(Object.entries(data).map(([cat, list]) =>
+                [cat, list.map(f => ({ ...f, url: `${origin}${f.url}` }))])));
         } catch (e) {
             setCategories(null);
-            setError(e.message);
+            setError(e.status || !remote ? e.message : 'Chưa kết nối được kho tài liệu trên máy (localhost:5001). Hãy mở backend\\Mo_KhoHoSo.bat rồi bấm Làm mới.');
         }
-    }, [apiBase]);
+    }, [apiBase, origin, remote]);
 
     useEffect(() => { setCategories(null); }, [apiBase]);
     useEffect(() => { reload(); }, [reload]);
 
     const openFolder = () => openDossierFolder(folderPath);
 
-    return { categories, error, reload, apiBase, openFolder };
+    return { categories, error, reload, apiBase, openFolder, readOnly: remote };
 };
 
 // Màu theo loại file: PDF đỏ, Word xanh dương, Excel xanh lá, PowerPoint cam, ảnh tím, nén vàng nâu, video chàm.
@@ -111,7 +124,7 @@ export const FileChip = ({ file, active, onSelect }) => {
 
 // Quản lý file (tải lên, xóa, mở thư mục trên máy). Việc đọc file nằm ở khung xem bên phải.
 const DossierFiles = ({ files, showToast, selectedKey, onPick }) => {
-    const { categories, error, reload, apiBase } = files;
+    const { categories, error, reload, apiBase, readOnly } = files;
     const [busy, setBusy] = useState(false);
     const fileInputs = useRef({});
 
@@ -153,19 +166,23 @@ const DossierFiles = ({ files, showToast, selectedKey, onPick }) => {
         <details className="bg-white border border-slate-200 rounded-2xl shadow-sm group">
             <summary className="flex items-center justify-between gap-2 px-6 py-4 cursor-pointer select-none list-none">
                 <span className="font-bold text-slate-800 flex items-center gap-2 text-base"><IconFileText className="w-5 h-5 text-sky-600" /> Quản lý tài liệu {categories && <span className="text-sm font-medium text-slate-400">({total} file)</span>}</span>
-                <span className="text-xs text-slate-400 group-open:hidden">Tải lên · Xóa</span>
+                <span className="text-xs text-slate-400 group-open:hidden">{readOnly ? 'Chỉ xem' : 'Tải lên · Xóa'}</span>
             </summary>
             <div className="px-6 pb-6 border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-xs text-slate-400">{readOnly ? 'Đang xem tài liệu từ máy của bạn (chỉ đọc; muốn tải lên hoặc xóa hãy dùng localhost:5001).' : ''}</span>
+                    <button type="button" onClick={reload} title="Đọc lại danh sách file trong thư mục (khi vừa thả file mới vào)" className="shrink-0 text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">⟳ Làm mới</button>
+                </div>
                 {error && <p className="text-sm text-rose-600">{error}</p>}
                 {categories && Object.entries(categories).map(([category, list]) => (
                     <div key={category} className="mb-4 last:mb-0">
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{folderLabel(category)} <span className="text-slate-400 normal-case font-medium">({list.length})</span></span>
-                            <button
+                            {!readOnly && <button
                                 disabled={busy}
                                 onClick={() => fileInputs.current[category]?.click()}
                                 className="flex items-center gap-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-md disabled:opacity-50"
-                            ><IconPlus className="w-3.5 h-3.5" /> Thêm file</button>
+                            ><IconPlus className="w-3.5 h-3.5" /> Thêm file</button>}
                             <input
                                 type="file" multiple accept={UPLOAD_ACCEPT} className="hidden"
                                 ref={el => { fileInputs.current[category] = el; }}
@@ -188,7 +205,7 @@ const DossierFiles = ({ files, showToast, selectedKey, onPick }) => {
                                             <FileTypeIcon ext={fileExt(f.fileName)} className="w-5 h-6" />
                                             <FileName name={f.fileName} className={`min-w-0 flex-1 truncate ${selectedKey === `${category}/${f.fileName}` ? 'text-sky-800 font-medium' : 'text-slate-700'}`} />
                                         </button>
-                                        <button onClick={() => remove(category, f.fileName)} title="Xóa file" className="text-slate-300 hover:text-rose-600 opacity-0 group-hover/row:opacity-100 focus:opacity-100 shrink-0"><IconTrash className="w-4 h-4" /></button>
+                                        {!readOnly && <button onClick={() => remove(category, f.fileName)} title="Xóa file" className="text-slate-300 hover:text-rose-600 opacity-0 group-hover/row:opacity-100 focus:opacity-100 shrink-0"><IconTrash className="w-4 h-4" /></button>}
                                     </li>
                                 ))}
                             </ul>
