@@ -430,8 +430,26 @@ const App = () => {
             try {
                 const data = await downloadFromDrive();
                 if (data) {
+                    // Hồ sơ có ở máy này mà không còn trong bản trên Drive (vd. đã xóa ở máy khác): gộp theo id sẽ giữ lại, nên hỏi lại có xóa không.
+                    const driveIds = new Set(Array.isArray(data.dossiers) ? data.dossiers.map(x => x && x.id) : []);
+                    const missing = driveIds.size ? dossiers.filter(d => !driveIds.has(d.id)) : [];
                     const r = mergeBackupData(data);
-                    showToast(`✅ Đã gộp dữ liệu từ Google Drive — Hồ sơ: thêm ${r.added}, cập nhật ${r.updated}. DNIS: thêm ${r.dnisAdded} (Drive có ${r.dnisInBackup}).`);
+                    showToast(`✅ Đã gộp dữ liệu từ Google Drive — Hồ sơ: thêm ${r.added}, cập nhật ${r.updated}${missing.length ? `, chỉ có ở máy này ${missing.length}` : ''}. DNIS: thêm ${r.dnisAdded} (Drive có ${r.dnisInBackup}).`);
+                    if (missing.length) {
+                        const shown = missing.slice(0, 8).map(d => `• ${d.title}`).join('\n');
+                        const more = missing.length > 8 ? `\n… và ${missing.length - 8} hồ sơ khác` : '';
+                        setConfirmDialog({
+                            isOpen: true,
+                            title: 'Xóa hồ sơ không còn trên Drive?',
+                            message: `Máy này có ${missing.length} hồ sơ không có trong bản trên Drive (có thể đã xóa ở máy khác):\n${shown}${more}\n\nChọn Hủy để giữ lại. Thư mục tài liệu không bị xóa.`,
+                            onConfirm: () => {
+                                const ids = new Set(missing.map(d => d.id));
+                                setDossiers(prev => prev.filter(d => !ids.has(d.id)));
+                                setActiveDossierId(cur => (ids.has(cur) ? null : cur));
+                                showToast(`Đã xóa ${ids.size} hồ sơ không còn trên Drive.`);
+                            },
+                        });
+                    }
                 } else {
                     showToast('Không tìm thấy bản sao lưu nào trên Drive.');
                 }
@@ -903,7 +921,7 @@ const App = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         </div>
                         <h3 className="text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
-                        <p className="text-slate-600 mb-6 text-sm">{confirmDialog.message}</p>
+                        <p className="text-slate-600 mb-6 text-sm whitespace-pre-line">{confirmDialog.message}</p>
                         <div className="flex gap-3 justify-center">
                             <button onClick={() => setConfirmDialog({isOpen: false})} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors">Hủy</button>
                             <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({isOpen: false}); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-medium transition-colors shadow-md shadow-rose-500/20">Đồng ý</button>
