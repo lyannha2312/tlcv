@@ -40,6 +40,9 @@ export const flattenFiles = (categories) =>
     Object.entries(categories || {}).flatMap(([category, list]) =>
         list.map(f => ({ ...f, category, key: `${category}/${f.fileName}` })));
 
+// Tên file bỏ đuôi, bỏ số ký hiệu đứng đầu và hậu tố _signed: "4350-CATP-PV01_Ten_signed.pdf" và "CATP-PV01_Ten.docx" cùng một khóa.
+const familyKey = (fileName) => slug(dropExt(fileName)).replace(/^\d+-/, '').replace(/-(signed|ky|da-ky)$/, '');
+
 // Văn bản do đơn vị mình ban hành (kết quả công việc) — gồm cả mốc nhập là "Văn bản đính kèm" nhưng người gửi là PV01/CATP/ĐUCATP.
 const isOutgoing = (evt) =>
     evt.type === 'result' || evt.rawData?.docType === DOC_TYPE_CONSULT || (evt.rawData?.type === 'document' && OWN_SENDERS.includes(slug(evt.rawData.sender)));
@@ -66,13 +69,22 @@ export const attachFiles = (events, categories) => {
         claim(i, f => re.test(slug(dropExt(f.fileName))));
     });
 
+    // Bản nháp/bản Word của một văn bản đi cùng mốc với bản đã ký (tên giống nhau, chỉ khác số ký hiệu ở đầu và đuôi _signed).
+    events.forEach((evt, i) => {
+        if (!isOutgoing(evt)) return;
+        const keys = new Set(byIndex[i].filter(f => f.category === RESULT_FOLDER).map(f => familyKey(f.fileName)).filter(k => k.length >= 8));
+        if (keys.size) claim(i, f => f.category === RESULT_FOLDER && keys.has(familyKey(f.fileName)));
+    });
+
     const initIndex = events.findIndex(e => e.type === 'init');
     if (initIndex >= 0) claim(initIndex, f => INCOMING_FOLDERS.includes(f.category));
 
     let resultIndex = -1;
-    events.forEach((e, i) => { if (isOutgoing(e)) resultIndex = i; });
+    let results = 0; // số văn bản kết quả (không tính công văn lấy ý kiến)
+    events.forEach((e, i) => { if (isOutgoing(e)) { resultIndex = i; if (!isConsultRaw(e.rawData)) results++; } });
     if (resultIndex < 0) resultIndex = events.findIndex(e => e.type === 'finish');
-    if (resultIndex >= 0) claim(resultIndex, f => f.category === RESULT_FOLDER);
+    // Từ hai văn bản kết quả trở lên thì không đoán file còn lại thuộc văn bản nào: để ở nhóm "chưa gắn vào tiến trình".
+    if (resultIndex >= 0 && results < 2) claim(resultIndex, f => f.category === RESULT_FOLDER);
 
     const consultIndex = events.findIndex(e => isConsultRaw(e.rawData));
     if (consultIndex >= 0) claim(consultIndex, f => f.category === REPORTS_FOLDER);
