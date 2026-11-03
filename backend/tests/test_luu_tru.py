@@ -4,6 +4,7 @@
 Chạy:  python -m unittest discover -s tests -v   (trong thư mục backend)
 """
 import json
+import mimetypes
 import os
 import shutil
 import sys
@@ -309,6 +310,25 @@ class LuuTruTest(unittest.TestCase):
             r = self.client.get(bad)
             self.assertEqual(r.status_code, 404, bad)
             self.assertNotIn(b"khong duoc lo", r.data, bad)
+
+    # --- giao diện ---
+    def test_file_js_css_phuc_vu_dung_kieu_du_cho_registry_windows_sai(self):
+        dist = os.path.join(self.tmp, "dist")
+        os.makedirs(os.path.join(dist, "assets"))
+        for name in ("a.js", "a.css"):
+            with open(os.path.join(dist, "assets", name), "w", encoding="utf-8") as f:
+                f.write("x")
+        old_dist = server.QLCV_DIST_DIR
+        server.QLCV_DIST_DIR = dist
+        try:
+            # Mô phỏng máy khai .js là text/plain trong registry, rồi chạy lại bước sửa lúc khởi động.
+            mimetypes.add_type("text/plain", ".js")
+            mimetypes.add_type("text/plain", ".css")
+            server.fix_mime_types()
+            self.assertTrue(self.client.get("/assets/a.js").headers["Content-Type"].startswith("text/javascript"))
+            self.assertTrue(self.client.get("/assets/a.css").headers["Content-Type"].startswith("text/css"))
+        finally:
+            server.QLCV_DIST_DIR = old_dist
 
 
 if __name__ == "__main__":

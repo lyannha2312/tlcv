@@ -168,6 +168,19 @@ const DetailView = ({
                     ← Quay lại {isActive ? 'Bàn làm việc' : 'Kho hồ sơ'}
                 </button>
                 <div className="flex items-center gap-2 flex-wrap">
+                    {serverMode === false && activeDossier.folderPath && (
+                        <button onClick={() => setLocalOn(!localOn)}
+                            title="Trang này không chứa tài liệu. Bật để đọc tài liệu từ máy của bạn (cần mở Mo_KhoHoSo.bat; chỉ đọc)"
+                            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${localOn ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'}`}>
+                            <IconFileText className="w-4 h-4"/> {localOn ? 'Đang xem tài liệu từ máy · Tắt' : 'Xem tài liệu từ máy'}
+                        </button>
+                    )}
+                    {activeDossier.folderPath && (
+                        <button onClick={() => openDossierFolder(activeDossier.folderPath, serverMode === true)}
+                            className="flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
+                            <IconFolder className="w-4 h-4 text-brand-600"/> Mở thư mục trên máy
+                        </button>
+                    )}
                     {withViewer && (
                         <button onClick={() => {
                             if (!viewerVisible && !selectedFile && orderedFiles.length > 0) setPickedFile(orderedFiles[0]);
@@ -224,19 +237,6 @@ const DetailView = ({
                 </div>
                 {/* Footer actions */}
                 <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-2 flex items-center justify-end gap-2">
-                    {serverMode === false && activeDossier.folderPath && (
-                        <button onClick={() => setLocalOn(!localOn)}
-                            title="Trang này không chứa tài liệu. Bật để đọc tài liệu từ máy của bạn (cần mở Mo_KhoHoSo.bat; chỉ đọc)"
-                            className={`flex items-center gap-1.5 border px-3 py-1.5 rounded-lg font-medium shadow-sm text-xs ${localOn ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'}`}>
-                            <IconFileText className="w-3.5 h-3.5"/> {localOn ? 'Đang xem tài liệu từ máy · Tắt' : 'Xem tài liệu từ máy'}
-                        </button>
-                    )}
-                    {activeDossier.folderPath && (
-                        <button onClick={() => openDossierFolder(activeDossier.folderPath, serverMode === true)}
-                            className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg font-medium shadow-sm text-xs">
-                            <IconFolder className="w-3.5 h-3.5 text-brand-600"/> Mở thư mục trên máy
-                        </button>
-                    )}
                     <button onClick={() => setDocModalConfig({isOpen: true, data: null, dossierId: activeDossier.id, isArchived: !isActive})}
                         className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3.5 py-1.5 rounded-lg font-medium shadow-sm text-xs">
                         <IconEdit className="w-3.5 h-3.5"/> Cập nhật nội dung

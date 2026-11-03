@@ -13,6 +13,7 @@ Mở web:   http://localhost:5001
 """
 
 import json
+import mimetypes
 import os
 import shutil
 import threading
@@ -21,6 +22,16 @@ import webbrowser
 from datetime import datetime
 
 from flask import Flask, jsonify, request, send_from_directory, abort
+
+
+def fix_mime_types():
+    """Python lấy kiểu file từ registry Windows; máy nào khai .js là text/plain thì trình duyệt từ chối chạy module."""
+    for ext, mime in ((".js", "text/javascript"), (".mjs", "text/javascript"),
+                      (".css", "text/css"), (".svg", "image/svg+xml")):
+        mimetypes.add_type(mime, ext)
+
+
+fix_mime_types()
 
 app = Flask(__name__, static_folder=None)  # không có thư mục static riêng; file hồ sơ phục vụ ở serve_pdf
 
