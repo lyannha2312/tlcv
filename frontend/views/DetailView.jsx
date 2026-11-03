@@ -164,21 +164,21 @@ const DetailView = ({
             {/* Nút quay lại + toggle khung đọc + xuất JSON: dính đầu trang, nằm ngoài lưới hai cột */}
             <div className="sticky top-0 z-20 py-2 bg-slate-50 flex items-center justify-between gap-2 flex-wrap">
                 <button onClick={() => setCurrentView(isActive ? 'workspace' : 'archive')}
-                    className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
+                    className="flex items-center gap-1.5 text-sm font-medium bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors">
                     ← Quay lại {isActive ? 'Bàn làm việc' : 'Kho hồ sơ'}
                 </button>
                 <div className="flex items-center gap-2 flex-wrap">
                     {serverMode === false && activeDossier.folderPath && (
                         <button onClick={() => setLocalOn(!localOn)}
                             title="Trang này không chứa tài liệu. Bật để đọc tài liệu từ máy của bạn (cần mở Mo_KhoHoSo.bat; chỉ đọc)"
-                            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${localOn ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'}`}>
-                            <IconFileText className="w-4 h-4"/> {localOn ? 'Đang xem tài liệu từ máy · Tắt' : 'Xem tài liệu từ máy'}
+                            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors shadow-sm ${localOn ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'}`}>
+                            <IconFileText className={`w-4 h-4 ${localOn ? '' : 'text-emerald-600'}`}/> {localOn ? 'Đang xem tài liệu từ máy · Tắt' : 'Xem tài liệu từ máy'}
                         </button>
                     )}
                     {activeDossier.folderPath && (
                         <button onClick={() => openDossierFolder(activeDossier.folderPath, serverMode === true)}
-                            className="flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
-                            <IconFolder className="w-4 h-4 text-brand-600"/> Mở thư mục trên máy
+                            className="flex items-center gap-1.5 text-sm font-medium bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg shadow-sm transition-colors">
+                            <IconFolder className="w-4 h-4 text-amber-600"/> Mở thư mục trên máy
                         </button>
                     )}
                     {withViewer && (
@@ -187,15 +187,15 @@ const DetailView = ({
                             setViewerVisible(v => !v);
                         }}
                         title={viewerVisible ? 'Ẩn khung đọc tài liệu bên phải' : 'Hiện khung đọc tài liệu bên phải'}
-                        className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${viewerVisible ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' : 'bg-brand-50 hover:bg-brand-100 text-brand-700 border-brand-200 shadow-sm'}`}>
-                            {viewerVisible ? <IconEyeOff className="w-4 h-4"/> : <IconEye className="w-4 h-4"/>}
+                        className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors shadow-sm ${viewerVisible ? 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-300' : 'bg-sky-600 hover:bg-sky-500 text-white border-sky-600'}`}>
+                            {viewerVisible ? <IconEyeOff className="w-4 h-4 text-sky-600"/> : <IconEye className="w-4 h-4"/>}
                             <span>{viewerVisible ? 'Ẩn khung đọc' : 'Hiện khung đọc'}</span>
                         </button>
                     )}
                     <button onClick={() => exportDossierToJson(activeDossier)}
                         title="Xuất hồ sơ này ra file JSON (có thể Import lại vào hệ thống)"
-                        className="flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
-                        <IconDownload className="w-4 h-4"/> Xuất JSON
+                        className="flex items-center gap-1.5 text-sm font-medium bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-300 px-3 py-1.5 rounded-lg shadow-sm transition-colors">
+                        <IconDownload className="w-4 h-4 text-violet-600"/> Xuất JSON
                     </button>
                 </div>
             </div>

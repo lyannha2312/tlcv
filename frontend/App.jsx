@@ -31,14 +31,15 @@ import { initGoogleAuth, loginAndSync, uploadToDrive, downloadFromDrive } from '
 import { detectBackend, loadServerData, loadDossiers, saveCollection } from './serverSync.js';
 import { APP_PASSWORD } from './security.js';
 
+// Mỗi mục một tông màu: chữ và icon cùng tông; `on` là khi đang chọn, `off` là khi chưa chọn (viết đủ tên class để Tailwind nhận ra).
 const NAV_ITEMS = [
-    { view: 'workspace', label: 'Bàn làm việc', Icon: IconFolder, on: 'bg-brand-50 text-brand-700 font-semibold' },
-    { view: 'archive', label: 'Kho hồ sơ', Icon: IconArchive, on: 'bg-brand-50 text-brand-700 font-semibold' },
-    { view: 'dnis', label: 'DNIS', Icon: IconDatabase, on: 'bg-brand-50 text-brand-700 font-semibold' },
-    { view: 'mail', label: 'Mail công vụ', Icon: IconMail, on: 'bg-brand-50 text-brand-700 font-semibold' },
-    { view: 'coordinations', label: 'Phối hợp', Icon: IconBriefcase, on: 'bg-brand-50 text-brand-700 font-semibold' },
-    { view: 'meetings', label: 'Cuộc họp', Icon: IconUsers, on: 'bg-brand-50 text-brand-700 font-semibold' },
-    { view: 'planner', label: 'Kế hoạch tuần', Icon: IconCalendar, on: 'bg-brand-50 text-brand-700 font-semibold' },
+    { view: 'workspace', label: 'Bàn làm việc', Icon: IconFolder, on: 'bg-brand-100 text-brand-700 font-semibold', off: 'text-brand-700 hover:bg-brand-50', icon: 'text-brand-600' },
+    { view: 'archive', label: 'Kho hồ sơ', Icon: IconArchive, on: 'bg-orange-100 text-orange-800 font-semibold', off: 'text-orange-800 hover:bg-orange-50', icon: 'text-orange-600' },
+    { view: 'dnis', label: 'DNIS', Icon: IconDatabase, on: 'bg-violet-100 text-violet-800 font-semibold', off: 'text-violet-800 hover:bg-violet-50', icon: 'text-violet-600' },
+    { view: 'mail', label: 'Mail công vụ', Icon: IconMail, on: 'bg-rose-100 text-rose-800 font-semibold', off: 'text-rose-800 hover:bg-rose-50', icon: 'text-rose-600' },
+    { view: 'coordinations', label: 'Phối hợp', Icon: IconBriefcase, on: 'bg-emerald-100 text-emerald-800 font-semibold', off: 'text-emerald-800 hover:bg-emerald-50', icon: 'text-emerald-600' },
+    { view: 'meetings', label: 'Cuộc họp', Icon: IconUsers, on: 'bg-teal-100 text-teal-800 font-semibold', off: 'text-teal-800 hover:bg-teal-50', icon: 'text-teal-600' },
+    { view: 'planner', label: 'Kế hoạch tuần', Icon: IconCalendar, on: 'bg-amber-100 text-amber-800 font-semibold', off: 'text-amber-800 hover:bg-amber-50', icon: 'text-amber-600' },
 ];
 // Các màn hình làm việc với hồ sơ: hiện danh sách hồ sơ dạng cây bên trái.
 const DOSSIER_VIEWS = ['workspace', 'archive', 'detail'];
@@ -671,12 +672,12 @@ const App = () => {
                     {serverMode === true && <div className="text-[10px] text-emerald-600 leading-none" title="Dữ liệu được lưu vào dossiers.json và data.json trên máy chạy Flask">● Đang lưu trên máy chủ</div>}
                 </div>
                 <nav className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto">
-                    {NAV_ITEMS.map(({ view, label, Icon, on }) => {
+                    {NAV_ITEMS.map(({ view, label, Icon, on, off, icon }) => {
                         const current = currentView === 'detail' ? (activeDossier?.status === 'archived' ? 'archive' : 'workspace') : currentView;
                         return (
                             <button key={view} onClick={() => setCurrentView(view)} title={label}
-                                className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${current === view ? on : 'text-slate-600 hover:bg-slate-50'}`}>
-                                <Icon className="w-[18px] h-[18px]" /><span className="hidden xl:inline">{label}</span>
+                                className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${current === view ? on : off}`}>
+                                <Icon className={`w-[18px] h-[18px] ${icon}`} /><span className="hidden xl:inline">{label}</span>
                             </button>
                         );
                     })}
