@@ -35,7 +35,7 @@ export const loadServerData = async () => {
     return { dossiers, ...data };
 };
 
-// name: 'dossiers' | 'dnisLogs' | 'mailLogs' | 'coordLogs' | 'schedules' | 'meetings'
+// name: 'dossiers' | 'supportLogs' | 'coordLogs' | 'schedules' | 'meetings'
 export const saveCollection = async (name, items) => {
     const path = name === 'dossiers' ? '/api/dossiers' : `/api/data/${name}`;
     const res = await fetch(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(items) });

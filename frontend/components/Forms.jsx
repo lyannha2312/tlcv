@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CATEGORIES, ISSUING_UNITS, getLocalDateTimeString, getDateRange, makeFolderName, folderNameProblem } from '../helpers.js';
+import { CATEGORIES, ISSUING_UNITS, SUPPORT_TYPES, getLocalDateTimeString, getDateRange, makeFolderName, folderNameProblem } from '../helpers.js';
 import { useDossierFiles } from './DossierFiles.jsx';
 import { STAGE_CONSULT, DOC_TYPE_CONSULT, REPORTS_FOLDER, FOLDER_DIRECTIVE, RESULT_FOLDER, folderLabel } from '../fileMatch.js';
 
@@ -177,57 +177,51 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
     );
 };
 
-// ---- DnisLogForm ----
-export const DnisLogForm = ({ initialData, onClose, saveDnisLog }) => {
+// ---- SupportLogForm (DNIS, Mail công vụ, QLVB V3) ----
+export const SupportLogForm = ({ initialData, defaultType, onClose, saveSupportLog }) => {
     const [form, setForm] = useState(() => {
-        if (initialData) return { ...initialData, date: getLocalDateTimeString(initialData.date) };
-        return { unit: '', date: getLocalDateTimeString(), content: '', contact: '', status: 'Đang thực hiện', docNumber: '', docDate: '' };
+        if (initialData) return { contact: '', docNumber: '', docDate: '', email: '', password: '', ...initialData, date: getLocalDateTimeString(initialData.date) };
+        return { type: defaultType || SUPPORT_TYPES[0].key, unit: '', date: getLocalDateTimeString(), content: '', status: 'Đang thực hiện', contact: '', docNumber: '', docDate: '', email: '', password: '' };
     });
+    const isMail = form.type === 'MAIL CÔNG VỤ';
+    const input = 'w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-brand-500';
 
-    const handleSubmit = (e) => { e.preventDefault(); if (form.content) { saveDnisLog({ ...form, date: new Date(form.date).toISOString() }, initialData?.id); onClose(); } };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!form.content) return;
+        // Chỉ lưu các trường thuộc loại đang chọn, tránh giữ lại giá trị của loại khác khi người dùng đổi loại giữa chừng.
+        const { contact, docNumber, docDate, email, password, ...common } = form;
+        const extra = isMail ? { email, password } : { contact, docNumber, docDate };
+        saveSupportLog({ ...common, ...extra, date: new Date(form.date).toISOString() }, initialData?.id);
+        onClose();
+    };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Đơn vị / Cơ quan <span className="text-rose-500">*</span></label><input required type="text" value={form.unit} onChange={e=>setForm({...form, unit: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-fuchsia-500" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Thời gian tiếp nhận <span className="text-rose-500">*</span></label><input required type="datetime-local" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-fuchsia-500" /></div>
-            </div>
-            <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung yêu cầu / Việc cần làm <span className="text-rose-500">*</span></label><textarea required rows="3" value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-fuchsia-500"></textarea></div>
-            <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Người liên hệ</label><input type="text" value={form.contact} onChange={e=>setForm({...form, contact: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-fuchsia-500" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label><select value={form.status} onChange={e=>setForm({...form, status: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-fuchsia-500"><option value="Chưa làm">Chưa làm</option><option value="Đang thực hiện">Đang thực hiện</option><option value="Hoàn thành">Hoàn thành</option></select></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Số VB đề nghị (Nếu có)</label><input type="text" value={form.docNumber} onChange={e=>setForm({...form, docNumber: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-fuchsia-500" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Ngày VB</label><input type="date" value={form.docDate} onChange={e=>setForm({...form, docDate: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-fuchsia-500" /></div>
-            </div>
-            <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button><button type="submit" className="px-5 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg font-medium shadow-md">Lưu Nhật Ký</button></div>
-        </form>
-    );
-};
-
-// ---- MailLogForm ----
-export const MailLogForm = ({ initialData, onClose, saveMailLog }) => {
-    const [form, setForm] = useState(() => {
-        if (initialData) return { ...initialData, date: getLocalDateTimeString(initialData.date) };
-        return { entity: '', email: '', password: '', date: getLocalDateTimeString(), content: '', status: 'Đang thực hiện' };
-    });
-
-    const handleSubmit = (e) => { e.preventDefault(); if (form.content) { saveMailLog({ ...form, date: new Date(form.date).toISOString() }, initialData?.id); onClose(); } };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Cá nhân / Tổ chức <span className="text-rose-500">*</span></label><input required type="text" value={form.entity} onChange={e=>setForm({...form, entity: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-cyan-500" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Thời gian yêu cầu <span className="text-rose-500">*</span></label><input required type="datetime-local" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-cyan-500" /></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Loại hỗ trợ <span className="text-rose-500">*</span></label><select value={form.type} onChange={e=>setForm({...form, type: e.target.value})} className={input}>{SUPPORT_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Thời gian tiếp nhận <span className="text-rose-500">*</span></label><input required type="datetime-local" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} className={input} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Địa chỉ Mail</label><input type="text" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-cyan-500" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu</label><input type="text" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-cyan-500" /></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">{isMail ? 'Cá nhân / Tổ chức' : 'Đơn vị / Cơ quan'} <span className="text-rose-500">*</span></label><input required type="text" value={form.unit} onChange={e=>setForm({...form, unit: e.target.value})} className={input} /></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label><select value={form.status} onChange={e=>setForm({...form, status: e.target.value})} className={input}><option value="Chưa làm">Chưa làm</option><option value="Đang thực hiện">Đang thực hiện</option><option value="Hoàn thành">Hoàn thành</option></select></div>
             </div>
-            <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung xử lý / Yêu cầu <span className="text-rose-500">*</span></label><textarea required rows="3" value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-cyan-500"></textarea></div>
-            <div><label className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label><select value={form.status} onChange={e=>setForm({...form, status: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-cyan-500"><option value="Chưa làm">Chưa làm</option><option value="Đang thực hiện">Đang thực hiện</option><option value="Hoàn thành">Hoàn thành</option></select></div>
-            <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button><button type="submit" className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium shadow-md">Lưu Yêu Cầu</button></div>
+            <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung yêu cầu / Việc cần làm <span className="text-rose-500">*</span></label><textarea required rows="3" value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className={input}></textarea></div>
+            {isMail ? (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                    <div><label className="block text-sm font-medium text-slate-700 mb-1">Địa chỉ Mail</label><input type="text" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className={input} /></div>
+                    <div><label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu</label><input type="text" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} className={input} /></div>
+                </div>
+            ) : (
+                <>
+                    <div><label className="block text-sm font-medium text-slate-700 mb-1">Người liên hệ</label><input type="text" value={form.contact} onChange={e=>setForm({...form, contact: e.target.value})} className={input} /></div>
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Số VB đề nghị (Nếu có)</label><input type="text" value={form.docNumber} onChange={e=>setForm({...form, docNumber: e.target.value})} className={input} /></div>
+                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Ngày VB</label><input type="date" value={form.docDate} onChange={e=>setForm({...form, docDate: e.target.value})} className={input} /></div>
+                    </div>
+                </>
+            )}
+            <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button><button type="submit" className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium shadow-md">Lưu</button></div>
         </form>
     );
 };

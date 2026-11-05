@@ -3,26 +3,25 @@ import * as XLSX from 'xlsx';
 import './index.css';
 
 // Helpers & constants
-import { generateId, mergeById, formatDate, getLocalDateTimeString, getMonday, CATEGORY_COLORS, CATEGORIES, WORK_TIME, BREAK_TIME } from './helpers.js';
+import { generateId, mergeById, collectSupportLogs, formatDate, getLocalDateTimeString, getMonday, CATEGORY_COLORS, CATEGORIES, WORK_TIME, BREAK_TIME } from './helpers.js';
 
 // Icons
 import {
     IconFolder, IconClock, IconCheckCircle, IconPlus, IconArchive,
     IconPlay, IconSquare, IconSearch, IconSave, IconUpload,
-    IconDatabase, IconMail, IconBriefcase, IconCalendar, IconUsers,
+    IconLifeBuoy, IconBriefcase, IconCalendar, IconUsers,
     IconMaximize, IconMinimize, IconSun, IconMoon, IconEdit, IconFileText
 } from './Icons.jsx';
 
 // Components
 import Modal from './components/Modal.jsx';
 import DossierTree from './components/DossierTree.jsx';
-import { DossierForm, AddDocForm, DnisLogForm, MailLogForm, CoordLogForm, ScheduleForm, MeetingForm } from './components/Forms.jsx';
+import { DossierForm, AddDocForm, SupportLogForm, CoordLogForm, ScheduleForm, MeetingForm } from './components/Forms.jsx';
 
 // Views
 import WorkspaceView from './views/WorkspaceView.jsx';
 import ArchiveView from './views/ArchiveView.jsx';
-import DnisView from './views/DnisView.jsx';
-import MailView from './views/MailView.jsx';
+import SupportView from './views/SupportView.jsx';
 import CoordinationsView from './views/CoordinationsView.jsx';
 import MeetingsView from './views/MeetingsView.jsx';
 import PlannerView from './views/PlannerView.jsx';
@@ -35,8 +34,7 @@ import { APP_PASSWORD } from './security.js';
 const NAV_ITEMS = [
     { view: 'workspace', label: 'Bàn làm việc', Icon: IconFolder, on: 'bg-brand-100 text-brand-700 font-semibold', off: 'text-brand-700 hover:bg-brand-50', icon: 'text-brand-600' },
     { view: 'archive', label: 'Kho hồ sơ', Icon: IconArchive, on: 'bg-orange-100 text-orange-800 font-semibold', off: 'text-orange-800 hover:bg-orange-50', icon: 'text-orange-600' },
-    { view: 'dnis', label: 'DNIS', Icon: IconDatabase, on: 'bg-violet-100 text-violet-800 font-semibold', off: 'text-violet-800 hover:bg-violet-50', icon: 'text-violet-600' },
-    { view: 'mail', label: 'Mail công vụ', Icon: IconMail, on: 'bg-rose-100 text-rose-800 font-semibold', off: 'text-rose-800 hover:bg-rose-50', icon: 'text-rose-600' },
+    { view: 'support', label: 'Hỗ trợ', Icon: IconLifeBuoy, on: 'bg-violet-100 text-violet-800 font-semibold', off: 'text-violet-800 hover:bg-violet-50', icon: 'text-violet-600' },
     { view: 'coordinations', label: 'Phối hợp', Icon: IconBriefcase, on: 'bg-emerald-100 text-emerald-800 font-semibold', off: 'text-emerald-800 hover:bg-emerald-50', icon: 'text-emerald-600' },
     { view: 'meetings', label: 'Cuộc họp', Icon: IconUsers, on: 'bg-teal-100 text-teal-800 font-semibold', off: 'text-teal-800 hover:bg-teal-50', icon: 'text-teal-600' },
     { view: 'planner', label: 'Kế hoạch tuần', Icon: IconCalendar, on: 'bg-amber-100 text-amber-800 font-semibold', off: 'text-amber-800 hover:bg-amber-50', icon: 'text-amber-600' },
@@ -82,13 +80,12 @@ const App = () => {
         const saved = localStorage.getItem('hoso_data_light_v4');
         return saved ? JSON.parse(saved) : [];
     });
-    const [dnisLogs, setDnisLogs] = useState(() => {
-        const saved = localStorage.getItem('hoso_data_light_dnis_logs_v4');
-        return saved ? JSON.parse(saved) : [];
-    });
-    const [mailLogs, setMailLogs] = useState(() => {
-        const saved = localStorage.getItem('hoso_data_light_mail_logs_v4');
-        return saved ? JSON.parse(saved) : [];
+    // Sổ Hỗ trợ gộp từ hai sổ DNIS và Mail công vụ cũ: lần đầu mở bản mới thì chuyển dữ liệu từ khóa cũ sang (khóa cũ vẫn giữ nguyên làm dự phòng).
+    const [supportLogs, setSupportLogs] = useState(() => {
+        const saved = localStorage.getItem('hoso_data_light_support_logs_v4');
+        if (saved) return JSON.parse(saved);
+        const old = (key) => { const v = localStorage.getItem(key); return v ? JSON.parse(v) : []; };
+        return collectSupportLogs({ dnisLogs: old('hoso_data_light_dnis_logs_v4'), mailLogs: old('hoso_data_light_mail_logs_v4') });
     });
     const [coordLogs, setCoordLogs] = useState(() => {
         const saved = localStorage.getItem('hoso_data_light_coord_logs_v4');
@@ -133,8 +130,7 @@ const App = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editDossierConfig, setEditDossierConfig] = useState({ isOpen: false, data: null });
     const [docModalConfig, setDocModalConfig] = useState({ isOpen: false, data: null });
-    const [dnisLogModalConfig, setDnisLogModalConfig] = useState({ isOpen: false, data: null });
-    const [mailLogModalConfig, setMailLogModalConfig] = useState({ isOpen: false, data: null });
+    const [supportLogModalConfig, setSupportLogModalConfig] = useState({ isOpen: false, data: null, defaultType: undefined });
     const [coordLogModalConfig, setCoordLogModalConfig] = useState({ isOpen: false, data: null });
     const [scheduleModalConfig, setScheduleModalConfig] = useState({ isOpen: false, data: null, targetDate: '' });
     const [meetingModalConfig, setMeetingModalConfig] = useState({ isOpen: false, data: null });
@@ -149,8 +145,7 @@ const App = () => {
 
     // Auto-save (localStorage)
     useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_v4', JSON.stringify(dossiers)); }, [dossiers, serverMode]);
-    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_dnis_logs_v4', JSON.stringify(dnisLogs)); }, [dnisLogs, serverMode]);
-    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_mail_logs_v4', JSON.stringify(mailLogs)); }, [mailLogs, serverMode]);
+    useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_support_logs_v4', JSON.stringify(supportLogs)); }, [supportLogs, serverMode]);
     useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_coord_logs_v4', JSON.stringify(coordLogs)); }, [coordLogs, serverMode]);
     useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_schedules_v4', JSON.stringify(schedules)); }, [schedules, serverMode]);
     useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_meetings_v4', JSON.stringify(meetings)); }, [meetings, serverMode]);
@@ -165,8 +160,7 @@ const App = () => {
                 const pick = (name, local) => (s[name].length === 0 && local.length > 0 ? local : s[name]);
                 lastSyncedRef.current = Object.fromEntries(Object.keys(s).map(k => [k, JSON.stringify(s[k])]));
                 setDossiers(pick('dossiers', dossiers));
-                setDnisLogs(pick('dnisLogs', dnisLogs));
-                setMailLogs(pick('mailLogs', mailLogs));
+                setSupportLogs(pick('supportLogs', supportLogs));
                 setCoordLogs(pick('coordLogs', coordLogs));
                 setSchedules(pick('schedules', schedules));
                 setMeetings(pick('meetings', meetings));
@@ -182,7 +176,7 @@ const App = () => {
     // Auto-save (Flask): ghi nhóm nào vừa đổi, gom các thay đổi liên tiếp trong 0,6 giây.
     useEffect(() => {
         if (serverMode !== true) return;
-        const state = { dossiers, dnisLogs, mailLogs, coordLogs, schedules, meetings };
+        const state = { dossiers, supportLogs, coordLogs, schedules, meetings };
         Object.entries(state).forEach(([name, items]) => {
             const json = JSON.stringify(items);
             if (lastSyncedRef.current[name] === json) return;
@@ -206,7 +200,7 @@ const App = () => {
                 }
             }, 600);
         });
-    }, [serverMode, dossiers, dnisLogs, mailLogs, coordLogs, schedules, meetings]);
+    }, [serverMode, dossiers, supportLogs, coordLogs, schedules, meetings]);
 
     useEffect(() => {
         initGoogleAuth(); // Kích hoạt ngầm thư viện Google khi web tải xong
@@ -340,20 +334,12 @@ const App = () => {
         showToast('Đã chuyển hồ sơ về trạng thái Đang thực hiện!');
     };
 
-    const saveDnisLog = (data, editId = null) => {
-        if (editId) { setDnisLogs(dnisLogs.map(l => l.id === editId ? { ...l, ...data } : l)); showToast('Đã cập nhật nhật ký DNIS!'); }
-        else { setDnisLogs([{ id: generateId(), createdAt: new Date().toISOString(), ...data }, ...dnisLogs]); showToast('Đã thêm nhật ký DNIS mới!'); }
+    const saveSupportLog = (data, editId = null) => {
+        if (editId) { setSupportLogs(supportLogs.map(l => l.id === editId ? { ...l, ...data } : l)); showToast('Đã cập nhật yêu cầu hỗ trợ!'); }
+        else { setSupportLogs([{ id: generateId(), createdAt: new Date().toISOString(), ...data }, ...supportLogs]); showToast('Đã thêm yêu cầu hỗ trợ mới!'); }
     };
-    const requestDeleteDnisLog = (id) => {
-        setConfirmDialog({ isOpen: true, title: 'Xóa nhật ký DNIS?', message: 'Bạn có chắc chắn muốn xóa bản ghi này? Không thể hoàn tác.', onConfirm: () => { setDnisLogs(dnisLogs.filter(l => l.id !== id)); showToast('Đã xóa thành công!'); } });
-    };
-
-    const saveMailLog = (data, editId = null) => {
-        if (editId) { setMailLogs(mailLogs.map(l => l.id === editId ? { ...l, ...data } : l)); showToast('Đã cập nhật yêu cầu Mail!'); }
-        else { setMailLogs([{ id: generateId(), createdAt: new Date().toISOString(), ...data }, ...mailLogs]); showToast('Đã thêm yêu cầu Mail mới!'); }
-    };
-    const requestDeleteMailLog = (id) => {
-        setConfirmDialog({ isOpen: true, title: 'Xóa yêu cầu Mail?', message: 'Bạn có chắc chắn muốn xóa bản ghi này?', onConfirm: () => { setMailLogs(mailLogs.filter(l => l.id !== id)); showToast('Đã xóa thành công!'); } });
+    const requestDeleteSupportLog = (id) => {
+        setConfirmDialog({ isOpen: true, title: 'Xóa yêu cầu hỗ trợ?', message: 'Bạn có chắc chắn muốn xóa bản ghi này? Không thể hoàn tác.', onConfirm: () => { setSupportLogs(supportLogs.filter(l => l.id !== id)); showToast('Đã xóa thành công!'); } });
     };
 
     const saveCoordLog = (data, editId = null) => {
@@ -399,21 +385,22 @@ const App = () => {
     const mergeBackupData = (data) => {
         const d = mergeById(dossiers, data.dossiers, ['relatedDocs', 'tasks']);
         if (data.dossiers) setDossiers(d.items);
-        // DNIS, Mail, Phối hợp, Cuộc họp hiển thị theo thứ tự lưu (mới nhất ở đầu) nên mục mới phải chèn lên đầu.
-        const dn = mergeById(dnisLogs, data.dnisLogs, [], { prepend: true });
-        if (data.dnisLogs) setDnisLogs(dn.items);
-        if (data.mailLogs) setMailLogs(mergeById(mailLogs, data.mailLogs, [], { prepend: true }).items);
+        // Hỗ trợ, Phối hợp, Cuộc họp hiển thị theo thứ tự lưu (mới nhất ở đầu) nên mục mới phải chèn lên đầu.
+        // File sao lưu cũ còn hai nhóm dnisLogs/mailLogs: collectSupportLogs chuyển chúng thành bản ghi Hỗ trợ.
+        const incomingSupport = collectSupportLogs(data);
+        const sp = mergeById(supportLogs, incomingSupport, [], { prepend: true });
+        if (incomingSupport) setSupportLogs(sp.items);
         if (data.coordLogs) setCoordLogs(mergeById(coordLogs, data.coordLogs, [], { prepend: true }).items);
         if (data.schedules) setSchedules(mergeById(schedules, data.schedules).items);
         if (data.meetings) setMeetings(mergeById(meetings, data.meetings, [], { prepend: true }).items);
-        return { ...d, dnisAdded: dn.added, dnisInBackup: Array.isArray(data.dnisLogs) ? data.dnisLogs.length : 0 };
+        return { ...d, supportAdded: sp.added, supportInBackup: incomingSupport ? incomingSupport.length : 0 };
     };
 
     const handleDriveUpload = () => {
         loginAndSync(async () => {
             setIsDriveSyncing(true);
             try {
-                const payload = { dossiers, dnisLogs, mailLogs, coordLogs, schedules, meetings, version: 2 };
+                const payload = { dossiers, supportLogs, coordLogs, schedules, meetings, version: 2 };
                 await uploadToDrive(payload);
                 showToast('✅ Đã lưu dữ liệu lên Google Drive!');
             } catch(e) {
@@ -434,7 +421,7 @@ const App = () => {
                     const driveIds = new Set(Array.isArray(data.dossiers) ? data.dossiers.map(x => x && x.id) : []);
                     const missing = driveIds.size ? dossiers.filter(d => !driveIds.has(d.id)) : [];
                     const r = mergeBackupData(data);
-                    showToast(`✅ Đã gộp dữ liệu từ Google Drive — Hồ sơ: thêm ${r.added}, cập nhật ${r.updated}${missing.length ? `, chỉ có ở máy này ${missing.length}` : ''}. DNIS: thêm ${r.dnisAdded} (Drive có ${r.dnisInBackup}).`);
+                    showToast(`✅ Đã gộp dữ liệu từ Google Drive — Hồ sơ: thêm ${r.added}, cập nhật ${r.updated}${missing.length ? `, chỉ có ở máy này ${missing.length}` : ''}. Hỗ trợ: thêm ${r.supportAdded} (Drive có ${r.supportInBackup}).`);
                     if (missing.length) {
                         const shown = missing.slice(0, 8).map(d => `• ${d.title}`).join('\n');
                         const more = missing.length > 8 ? `\n… và ${missing.length - 8} hồ sơ khác` : '';
@@ -462,7 +449,7 @@ const App = () => {
     };
 
     const handleBackup = () => {
-        const payload = { dossiers, dnisLogs, mailLogs, coordLogs, schedules, meetings, version: 2 };
+        const payload = { dossiers, supportLogs, coordLogs, schedules, meetings, version: 2 };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload));
         const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", `Backup_QLCV_${new Date().toISOString().split('T')[0]}.json`);
         document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove();
@@ -497,7 +484,7 @@ const App = () => {
                 const data = JSON.parse(e.target.result);
                 if (data.version && data.dossiers) {
                     const r = mergeBackupData(data);
-                    showToast(`Phục hồi thành công — Hồ sơ: thêm ${r.added}, cập nhật ${r.updated}. DNIS: thêm ${r.dnisAdded} (file có ${r.dnisInBackup}).`);
+                    showToast(`Phục hồi thành công — Hồ sơ: thêm ${r.added}, cập nhật ${r.updated}. Hỗ trợ: thêm ${r.supportAdded} (file có ${r.supportInBackup}).`);
                 }
                 else if (Array.isArray(data)) {
                     const r = mergeBackupData({ dossiers: data });
@@ -773,25 +760,13 @@ const App = () => {
                         />
                     )}
 
-                    {currentView === 'dnis' && (
-                        <DnisView
-                            dnisLogs={dnisLogs}
+                    {currentView === 'support' && (
+                        <SupportView
+                            supportLogs={supportLogs}
                             meetings={meetings}
                             dossiers={dossiers}
-                            setDnisLogModalConfig={setDnisLogModalConfig}
-                            requestDeleteDnisLog={requestDeleteDnisLog}
-                            setActiveDossierId={setActiveDossierId}
-                            setCurrentView={setCurrentView}
-                            setIsCreateModalOpen={setIsCreateModalOpen}
-                        />
-                    )}
-
-                    {currentView === 'mail' && (
-                        <MailView
-                            mailLogs={mailLogs}
-                            dossiers={dossiers}
-                            setMailLogModalConfig={setMailLogModalConfig}
-                            requestDeleteMailLog={requestDeleteMailLog}
+                            setSupportLogModalConfig={setSupportLogModalConfig}
+                            requestDeleteSupportLog={requestDeleteSupportLog}
                             setActiveDossierId={setActiveDossierId}
                             setCurrentView={setCurrentView}
                             setIsCreateModalOpen={setIsCreateModalOpen}
@@ -820,8 +795,7 @@ const App = () => {
                             setCurrentWeekStart={setCurrentWeekStart}
                             schedules={schedules}
                             dossiers={dossiers}
-                            dnisLogs={dnisLogs}
-                            mailLogs={mailLogs}
+                            supportLogs={supportLogs}
                             coordLogs={coordLogs}
                             meetings={meetings}
                             setScheduleModalConfig={setScheduleModalConfig}
@@ -893,12 +867,8 @@ const App = () => {
                 />
             </Modal>
 
-            <Modal isOpen={dnisLogModalConfig.isOpen} onClose={() => setDnisLogModalConfig({isOpen: false, data: null})} title={dnisLogModalConfig.data ? "Cập nhật Nhật ký DNIS" : "Thêm Nhật ký DNIS mới"} maxWidth="max-w-2xl">
-                <DnisLogForm initialData={dnisLogModalConfig.data} onClose={() => setDnisLogModalConfig({isOpen: false, data: null})} saveDnisLog={saveDnisLog} />
-            </Modal>
-
-            <Modal isOpen={mailLogModalConfig.isOpen} onClose={() => setMailLogModalConfig({isOpen: false, data: null})} title={mailLogModalConfig.data ? "Cập nhật Yêu cầu Mail" : "Thêm Yêu cầu Mail mới"} maxWidth="max-w-2xl">
-                <MailLogForm initialData={mailLogModalConfig.data} onClose={() => setMailLogModalConfig({isOpen: false, data: null})} saveMailLog={saveMailLog} />
+            <Modal isOpen={supportLogModalConfig.isOpen} onClose={() => setSupportLogModalConfig({isOpen: false, data: null})} title={supportLogModalConfig.data ? "Cập nhật Yêu cầu Hỗ trợ" : "Thêm Yêu cầu Hỗ trợ mới"} maxWidth="max-w-2xl">
+                <SupportLogForm initialData={supportLogModalConfig.data} defaultType={supportLogModalConfig.defaultType} onClose={() => setSupportLogModalConfig({isOpen: false, data: null})} saveSupportLog={saveSupportLog} />
             </Modal>
 
             <Modal isOpen={coordLogModalConfig.isOpen} onClose={() => setCoordLogModalConfig({isOpen: false, data: null})} title={coordLogModalConfig.data ? "Cập nhật Nhiệm vụ Phối hợp" : "Thêm Nhiệm vụ Phối hợp mới"} maxWidth="max-w-2xl">

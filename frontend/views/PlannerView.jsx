@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDayName, getMonday } from '../helpers.js';
+import { getDayName, getMonday, getSupportType } from '../helpers.js';
 import { DOC_TYPE_CONSULT } from '../fileMatch.js';
 import {
     IconCalendar, IconPlus, IconEdit, IconTrash,
@@ -12,8 +12,7 @@ const PlannerView = ({
     setCurrentWeekStart,
     schedules,
     dossiers,
-    dnisLogs,
-    mailLogs,
+    supportLogs,
     coordLogs,
     meetings,
     setScheduleModalConfig,
@@ -117,24 +116,27 @@ const PlannerView = ({
                 });
             }
         });
-        const dnisDone = dnisLogs.filter(l => (l.createdAt?.startsWith(dateStr) || l.date?.startsWith(dateStr)) && l.status === 'Hoàn thành');
-        if (dnisDone.length) {
+        const supportOnDay = supportLogs.filter(l => l.createdAt?.startsWith(dateStr) || l.date?.startsWith(dateStr));
+        // DNIS và QLVB V3: chỉ ghi nhận các yêu cầu đã hoàn thành, gộp thành một mục cho mỗi loại.
+        [{ key: 'DNIS', color: 'text-fuchsia-700' }, { key: 'QLVB V3', color: 'text-indigo-700' }].forEach(({ key, color }) => {
+            const done = supportOnDay.filter(l => (l.type || 'DNIS') === key && l.status === 'Hoàn thành');
+            if (!done.length) return;
             acts.push({
-                id: `dnis_${dateStr}`,
+                id: `support_${key}_${dateStr}`,
                 text: (
                     <div className="space-y-1">
-                        {dnisDone.map(l => (
+                        {done.map(l => (
                             <div key={l.id}>• <span className="font-semibold">{l.unit}</span>: {l.content}</div>
                         ))}
                     </div>
                 ),
-                source: `Yêu cầu DNIS`,
+                source: `Yêu cầu ${getSupportType(key).label}`,
                 icon: <IconDatabase className="w-4 h-4"/>,
-                color: 'text-fuchsia-700',
+                color,
             });
-        }
-        mailLogs.filter(l => l.createdAt?.startsWith(dateStr) || l.date?.startsWith(dateStr)).forEach(l =>
-            acts.push({ id: l.id, text: `Mail: ${l.email || l.entity}\nNội dung: ${l.content}`, source: `Mail công vụ - ${l.entity}`, icon: <IconMail className="w-4 h-4"/>, color: 'text-cyan-700' })
+        });
+        supportOnDay.filter(l => l.type === 'MAIL CÔNG VỤ').forEach(l =>
+            acts.push({ id: l.id, text: `Mail: ${l.email || l.unit}\nNội dung: ${l.content}`, source: `Mail công vụ - ${l.unit}`, icon: <IconMail className="w-4 h-4"/>, color: 'text-cyan-700' })
         );
         coordLogs.filter(l => l.assignedDate === dateStr).forEach(l =>
             acts.push({ id: l.id, text: `Chỉ đạo: ${l.content}\nTiến độ: ${l.progress}`, source: `Phối hợp: ${l.summary}`, icon: <IconBriefcase className="w-4 h-4"/>, color: 'text-orange-700' })
@@ -145,7 +147,7 @@ const PlannerView = ({
         return acts;
     };
 
-    const accentMap = { 'text-blue-700': 'bg-blue-500', 'text-violet-700': 'bg-violet-500', 'text-emerald-700': 'bg-emerald-500', 'text-fuchsia-700': 'bg-fuchsia-500', 'text-cyan-700': 'bg-cyan-500', 'text-orange-700': 'bg-orange-500', 'text-teal-700': 'bg-teal-500' };
+    const accentMap = { 'text-blue-700': 'bg-blue-500', 'text-violet-700': 'bg-violet-500', 'text-emerald-700': 'bg-emerald-500', 'text-fuchsia-700': 'bg-fuchsia-500', 'text-indigo-700': 'bg-indigo-500', 'text-cyan-700': 'bg-cyan-500', 'text-orange-700': 'bg-orange-500', 'text-teal-700': 'bg-teal-500' };
 
     return (
         <div className="max-w-5xl mx-auto pb-10">

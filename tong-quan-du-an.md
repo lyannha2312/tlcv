@@ -55,7 +55,7 @@ Giao diện cảnh báo khi tên file hoặc đường dẫn quá dài.
 - **Quản lý tài liệu:** icon theo loại file (PDF đỏ, Word xanh dương, Excel xanh lá...), mỗi file một dòng, bấm để xem ở khung đọc bên phải (PDF và ảnh xem trực tiếp; Word, Excel mở trên Drive hoặc tải xuống), tải lên, xóa, Làm mới. Link Google Drive lưu trong ô "Đường dẫn file" của mốc mở được bằng một nút.
 - **Cảnh báo khi đóng hồ sơ** mà thư mục thiếu file ở `1_Chỉ đạo` hoặc `4_Triển khai` (không chặn).
 - **Kho hồ sơ:** tìm kiếm, lọc theo chuyên đề, trạng thái, khoảng ngày; cây hồ sơ bên trái theo chuyên đề.
-- **Các sổ ghi chép:** DNIS, mail công vụ, nhiệm vụ phối hợp, cuộc họp; **Kế hoạch tuần** tự tổng hợp hoạt động từ dữ liệu có sẵn.
+- **Các sổ ghi chép:** Hỗ trợ (chọn loại DNIS / Mail công vụ / QLVB V3), nhiệm vụ phối hợp, cuộc họp; **Kế hoạch tuần** tự tổng hợp hoạt động từ dữ liệu có sẵn.
 - **Đồng bộ và sao lưu:** lưu/tải Google Drive (`QLCV_Cloud_Backup.json`), sao lưu, phục hồi, import hồ sơ từ file (có mật khẩu xác nhận).
 
 ## 4. Hai cách chạy
@@ -81,7 +81,7 @@ _QLCV_Merged/
 │   └── dossiers.json, data.json, backups/   dữ liệu thật (không đưa lên git)
 └── frontend/                    giao diện React 18 + Vite + Tailwind
     ├── App.jsx                  điều phối, đồng bộ máy chủ, mật khẩu xác nhận
-    ├── views/                   Workspace, Detail, Archive, Planner, Dnis, Mail, Coordinations, Meetings
+    ├── views/                   Workspace, Detail, Archive, Planner, Support, Coordinations, Meetings
     ├── components/              DossierFiles, DossierTree, Forms, PdfViewer, Modal
     ├── fileMatch.js             gắn file vào mốc, tên thư mục chuẩn, phân loại "Lấy ý kiến"
     ├── helpers.js, serverSync.js, driveSync.js, security.js
@@ -121,7 +121,7 @@ Biến môi trường để chạy bản thử tách khỏi dữ liệu thật: 
 - Trang `lyannha2312.github.io` chỉ được gọi đúng ba việc **chỉ đọc**: mở thư mục, xem danh sách file, xem nội dung file. Mọi việc khác (tải lên, xóa, ghi, danh sách hồ sơ) và mọi trang khác đều bị từ chối.
 - Mật khẩu ứng dụng chặn các thao tác nhạy cảm (lưu Drive, sao lưu, phục hồi, import, xóa hồ sơ). Trên Pages nó chỉ là rào cản thao tác nhầm, vì mã chạy ở trình duyệt.
 - Dữ liệu hồ sơ, sao lưu, cấu hình, mật khẩu **không** được đưa lên GitHub (xem `.gitignore`). Repo công khai: không bao giờ commit các file đó.
-- Mật khẩu mail trong sổ "Mail công vụ" lưu dạng chữ thường trong `data.json` và file sao lưu.
+- Mật khẩu mail trong sổ "Hỗ trợ" (loại Mail công vụ) lưu dạng chữ thường trong `data.json` và file sao lưu.
 
 ## 9. Việc có thể làm tiếp
 

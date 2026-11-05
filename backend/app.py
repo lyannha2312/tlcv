@@ -151,7 +151,28 @@ JSON_PATH = os.path.join(DATA_DIR, "dossiers.json")
 # data.json giữ các nhóm dữ liệu ngoài hồ sơ (hồ sơ vẫn nằm ở dossiers.json).
 # Tên nhóm khớp với payload của nút "Lưu lên Drive" (QLCV_Cloud_Backup.json).
 DATA_PATH = os.path.join(DATA_DIR, "data.json")
-DATA_COLLECTIONS = ["dnisLogs", "mailLogs", "coordLogs", "schedules", "meetings"]
+DATA_COLLECTIONS = ["supportLogs", "coordLogs", "schedules", "meetings"]
+
+
+def collect_support_logs(data):
+    """Lấy danh sách sổ Hỗ trợ từ `data`; hai sổ cũ dnisLogs/mailLogs được chuyển thành bản ghi Hỗ trợ
+    (dnisLogs -> type DNIS; mailLogs -> type MAIL CÔNG VỤ, trường entity đổi thành unit).
+    Trả về None nếu `data` không có nhóm nào trong ba nhóm trên."""
+    if not isinstance(data, dict) or not any(isinstance(data.get(k), list) for k in ("supportLogs", "dnisLogs", "mailLogs")):
+        return None
+
+    def items(key):
+        return [x for x in data.get(key, []) if isinstance(x, dict)] if isinstance(data.get(key), list) else []
+
+    from_mail = []
+    for log in items("mailLogs"):
+        log = dict(log)
+        entity = log.pop("entity", "")
+        log["unit"] = log["unit"] if log.get("unit") is not None else entity
+        log["type"] = "MAIL CÔNG VỤ"
+        from_mail.append(log)
+    from_dnis = [{**log, "type": "DNIS"} for log in items("dnisLogs")]
+    return items("supportLogs") + from_mail + from_dnis
 
 
 
@@ -227,7 +248,10 @@ def load_data():
         except Exception as e:
             # Không trả rỗng âm thầm: lần ghi sau sẽ đè mất dữ liệu đang có trong file hỏng.
             raise Exception(f"Không đọc được data.json: {e}")
-    return {name: data.get(name) if isinstance(data.get(name), list) else [] for name in DATA_COLLECTIONS}
+    result = {name: data.get(name) if isinstance(data.get(name), list) else [] for name in DATA_COLLECTIONS}
+    # data.json của bản cũ còn hai nhóm dnisLogs/mailLogs: chuyển sang sổ Hỗ trợ (lần ghi sau sẽ lưu theo cấu trúc mới).
+    result["supportLogs"] = collect_support_logs(data) or []
+    return result
 
 
 def save_data(data):
@@ -782,7 +806,7 @@ def api_data_get():
 
 @app.route("/api/data/<name>", methods=["PUT"])
 def api_data_put(name):
-    """Thay toàn bộ một nhóm (dnisLogs, mailLogs, ...) bằng danh sách gửi lên."""
+    """Thay toàn bộ một nhóm (supportLogs, coordLogs, ...) bằng danh sách gửi lên."""
     if name not in DATA_COLLECTIONS:
         return jsonify({"error": f"Nhóm dữ liệu không hợp lệ: {name}"}), 404
     items = request.get_json(silent=True)
@@ -807,7 +831,8 @@ def api_data_import():
         data = load_data()
         stats = {}
         for name in DATA_COLLECTIONS:
-            incoming = body.get(name)
+            # File sao lưu cũ còn dnisLogs/mailLogs thay cho supportLogs.
+            incoming = collect_support_logs(body) if name == "supportLogs" else body.get(name)
             if not isinstance(incoming, list):
                 continue
             # Danh sách hiển thị mục mới nhất ở đầu nên mục mới phải chèn lên đầu.

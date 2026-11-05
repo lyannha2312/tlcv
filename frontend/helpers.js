@@ -49,6 +49,25 @@ export const CATEGORY_COLORS = {
 
 export const CATEGORIES = Object.keys(CATEGORY_COLORS);
 
+// ---- Sổ Hỗ trợ (gộp DNIS, Mail công vụ, QLVB V3) ----
+// Mỗi bản ghi có `type` là một trong các key dưới đây. Mail dùng thêm email/password, hai loại còn lại dùng contact/docNumber/docDate.
+export const SUPPORT_TYPES = [
+    { key: 'DNIS', label: 'DNIS', badge: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200', text: 'text-fuchsia-700', hoverRow: 'hover:bg-fuchsia-50/30' },
+    { key: 'MAIL CÔNG VỤ', label: 'Mail công vụ', badge: 'bg-cyan-100 text-cyan-700 border-cyan-200', text: 'text-cyan-700', hoverRow: 'hover:bg-cyan-50/30' },
+    { key: 'QLVB V3', label: 'QLVB V3', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', text: 'text-indigo-700', hoverRow: 'hover:bg-indigo-50/30' },
+];
+export const getSupportType = (key) => SUPPORT_TYPES.find(t => t.key === key) || SUPPORT_TYPES[0];
+
+// Chuyển dữ liệu của hai sổ cũ sang sổ Hỗ trợ: dnisLogs -> type DNIS; mailLogs -> type MAIL CÔNG VỤ (trường `entity` đổi thành `unit`).
+// Trả về null nếu `data` không có nhóm nào trong ba nhóm (supportLogs, dnisLogs, mailLogs) để nơi gọi biết là không cần cập nhật.
+export const collectSupportLogs = (data) => {
+    if (!data || ![data.supportLogs, data.dnisLogs, data.mailLogs].some(Array.isArray)) return null;
+    const list = (x) => (Array.isArray(x) ? x : []);
+    const fromMail = list(data.mailLogs).map(({ entity, ...l }) => ({ ...l, unit: l.unit ?? entity ?? '', type: 'MAIL CÔNG VỤ' }));
+    const fromDnis = list(data.dnisLogs).map(l => ({ ...l, type: 'DNIS' }));
+    return [...list(data.supportLogs), ...fromMail, ...fromDnis];
+};
+
 // Đơn vị phát hành văn bản (chọn khi thêm văn bản phát sinh)
 export const ISSUING_UNITS = ['PV01', 'CATP', 'ĐUCATP'];
 
