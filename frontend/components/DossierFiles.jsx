@@ -41,6 +41,15 @@ export const openDossierFolder = async (folderPath, serverMode = true) => {
     }
 };
 
+// Tạo thư mục con chuẩn (vd. 4_Báo cáo đơn vị) cho hồ sơ; chỉ dùng khi giao diện được Flask phục vụ cùng địa chỉ.
+export const ensureDossierFolder = async (folderPath, category) => {
+    const res = await fetch(`${dossierApiBase(folderPath)}/folder`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category }),
+    });
+    if (!res.ok) throw await parseError(res);
+    return res.json();
+};
+
 // Đọc danh sách file của một hồ sơ từ Flask. folderPath = null thì không làm gì.
 // remote = true: trang đang chạy ở nơi khác (GitHub Pages) nên gọi sang Flask trên máy này và chỉ đọc.
 export const useDossierFiles = (folderPath, remote = false) => {

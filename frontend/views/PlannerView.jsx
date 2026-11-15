@@ -1,6 +1,6 @@
 import React from 'react';
 import { getDayName, getMonday, getSupportType } from '../helpers.js';
-import { DOC_TYPE_CONSULT } from '../fileMatch.js';
+import { DOC_TYPE_CONSULT, CONSULT_LABEL } from '../fileMatch.js';
 import {
     IconCalendar, IconPlus, IconEdit, IconTrash,
     IconChevronLeft, IconChevronRight, IconExternalLink,
@@ -75,7 +75,7 @@ const PlannerView = ({
                 } else if (rd.type === 'document' && (rd.docType === 'Văn bản kết quả' || rd.docType === DOC_TYPE_CONSULT)) {
                     const day = (rd.date || rd.addedAt || '').slice(0, 10);
                     if (day === dateStr && day !== closeDay) {
-                        let u = `${rd.docType === DOC_TYPE_CONSULT ? 'Lấy ý kiến' : 'Văn bản kết quả'}: ${rd.number || '(chưa có số)'}`;
+                        let u = `${rd.docType === DOC_TYPE_CONSULT ? CONSULT_LABEL : 'Văn bản kết quả'}: ${rd.number || '(chưa có số)'}`;
                         if (rd.content) u += ` - ${rd.content}`;
                         if (rd.note) u += ` (Ghi chú: ${rd.note})`;
                         updates.push(u);

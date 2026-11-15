@@ -16,10 +16,11 @@ from datetime import datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Tên thư mục con chuẩn: tên mới (có số thứ tự) và tên cũ vẫn nhận ra cho hồ sơ chưa đổi tên.
-NEW_NAMES = ["1_Chỉ đạo", "2_Phụ lục", "3_Báo cáo đơn vị", "4_Triển khai", "5_Bản nháp"]
-OLD_NAMES = ["Văn bản chỉ đạo", "Phụ lục", "Báo cáo của các đơn vị", "Văn bản triển khai"]
+NEW_NAMES = ["1_Chỉ đạo", "2_Phụ lục", "3_Triển khai", "4_Báo cáo đơn vị", "5_Bản nháp"]
+# Gồm cả số thứ tự cũ (trước 13/11/2026: 3 là báo cáo, 4 là triển khai).
+OLD_NAMES = ["Văn bản chỉ đạo", "Phụ lục", "Báo cáo của các đơn vị", "Văn bản triển khai", "3_Báo cáo đơn vị", "4_Triển khai"]
 CATEGORIES = NEW_NAMES + OLD_NAMES
-REQUIRED_WHEN_CLOSED = {"văn bản chỉ đạo": ("1_Chỉ đạo", "Văn bản chỉ đạo"), "văn bản triển khai": ("4_Triển khai", "Văn bản triển khai")}
+REQUIRED_WHEN_CLOSED = {"văn bản chỉ đạo": ("1_Chỉ đạo", "Văn bản chỉ đạo"), "văn bản triển khai": ("3_Triển khai", "4_Triển khai", "Văn bản triển khai")}
 ALLOWED_EXTS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
                 ".jpg", ".jpeg", ".png", ".gif", ".txt", ".rtf", ".zip", ".rar"}
 OWN_SENDERS = {"pv01", "catp", "đucatp", "ducatp", "pv01-tmth"}

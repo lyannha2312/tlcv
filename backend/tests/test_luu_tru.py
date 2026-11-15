@@ -62,7 +62,7 @@ class LuuTruTest(unittest.TestCase):
         r = self.put([make_dossier("a", "2026-05-01_1-X_abc")])
         self.assertEqual(r.status_code, 200)
         self.assertEqual(self.saved()["a"]["storagePath"], "2026/GÓP Ý/2026-05-01_1-X_abc")
-        for c in ("1_Chỉ đạo", "2_Phụ lục", "4_Triển khai"):
+        for c in ("1_Chỉ đạo", "2_Phụ lục", "3_Triển khai"):
             self.assertTrue(os.path.isdir(self.path("2026", "GÓP Ý", "2026-05-01_1-X_abc", c)))
 
     def test_storage_path_tu_may_khach_bi_bo_qua(self):
@@ -159,17 +159,17 @@ class LuuTruTest(unittest.TestCase):
         base = "2026/GÓP Ý/f1/"
         self.write(base + "1_Chỉ đạo/cd.pdf")
         self.write(base + "Xin ý kiến BTV/nhap.docx")
-        self.write(base + "3_Báo cáo đơn vị/CAP A.pdf")
+        self.write(base + "4_Báo cáo đơn vị/CAP A.pdf")
         self.write(base + "2_Phụ lục/ghi-chu.md")
         self.write(base + "2_Phụ lục/.~lock.x.docx#")
         self.write(base + "le.mp4")
         groups = self.client.get("/api/ho_so/f1/files").get_json()["categories"]
         self.assertEqual([f["fileName"] for f in groups["Xin ý kiến BTV"]], ["nhap.docx"])
-        self.assertEqual([f["fileName"] for f in groups["3_Báo cáo đơn vị"]], ["CAP A.pdf"])
+        self.assertEqual([f["fileName"] for f in groups["4_Báo cáo đơn vị"]], ["CAP A.pdf"])
         self.assertEqual([f["fileName"] for f in groups["2_Phụ lục"]], ["ghi-chu.md"])  # bỏ file khóa tạm
         self.assertEqual([f["fileName"] for f in groups["Khác"]], ["le.mp4"])
         self.assertEqual(groups["1_Chỉ đạo"][0]["url"], "/static/ho-so/2026/GÓP Ý/f1/1_Chỉ đạo/cd.pdf")
-        self.assertIn("4_Triển khai", groups)  # nhóm chuẩn luôn có
+        self.assertIn("3_Triển khai", groups)  # nhóm chuẩn luôn có
 
     def test_tai_len_va_xoa_trong_thu_muc_con_tu_tao_nhung_khong_thoat_ra_ngoai(self):
         self.put([make_dossier("a", "f1")])
@@ -192,34 +192,47 @@ class LuuTruTest(unittest.TestCase):
     # --- tên thư mục con mới / cũ ---
     def test_thu_muc_ten_cu_van_duoc_nhan_ra_va_gop_vao_nhom_ten_moi(self):
         self.put([make_dossier("a", "f1")])
-        for d in ("1_Chỉ đạo", "2_Phụ lục", "4_Triển khai"):
+        for d in ("1_Chỉ đạo", "2_Phụ lục", "3_Triển khai"):
             shutil.rmtree(self.path("2026", "GÓP Ý", "f1", d))
         self.write("2026/GÓP Ý/f1/Văn bản chỉ đạo/cu.pdf")
         self.write("2026/GÓP Ý/f1/Báo cáo của các đơn vị/CAP A.pdf")
         self.write("2026/GÓP Ý/f1/Văn bản triển khai/kq.pdf")
         groups = self.client.get("/api/ho_so/f1/files").get_json()["categories"]
         self.assertEqual([f["fileName"] for f in groups["1_Chỉ đạo"]], ["cu.pdf"])
-        self.assertEqual([f["fileName"] for f in groups["3_Báo cáo đơn vị"]], ["CAP A.pdf"])
-        self.assertEqual([f["fileName"] for f in groups["4_Triển khai"]], ["kq.pdf"])
+        self.assertEqual([f["fileName"] for f in groups["4_Báo cáo đơn vị"]], ["CAP A.pdf"])
+        self.assertEqual([f["fileName"] for f in groups["3_Triển khai"]], ["kq.pdf"])
         self.assertNotIn("Văn bản chỉ đạo", groups)
         self.assertEqual(groups["1_Chỉ đạo"][0]["url"], "/static/ho-so/2026/GÓP Ý/f1/Văn bản chỉ đạo/cu.pdf")
         self.assertEqual(self.client.get(groups["1_Chỉ đạo"][0]["url"]).status_code, 200)
 
+    def test_so_thu_tu_cu_3_bao_cao_4_trien_khai_van_duoc_nhan_dung_loai(self):
+        self.put([make_dossier("a", "f1")])
+        shutil.rmtree(self.path("2026", "GÓP Ý", "f1", "3_Triển khai"))
+        self.write("2026/GÓP Ý/f1/3_Báo cáo đơn vị/CAP A.pdf")
+        self.write("2026/GÓP Ý/f1/4_Triển khai/kq.pdf")
+        groups = self.client.get("/api/ho_so/f1/files").get_json()["categories"]
+        self.assertEqual([f["fileName"] for f in groups["4_Báo cáo đơn vị"]], ["CAP A.pdf"])
+        self.assertEqual([f["fileName"] for f in groups["3_Triển khai"]], ["kq.pdf"])
+        self.assertNotIn("3_Báo cáo đơn vị", groups)
+        self.assertNotIn("4_Triển khai", groups)
+        self.assertEqual(groups["3_Triển khai"][0]["url"], "/static/ho-so/2026/GÓP Ý/f1/4_Triển khai/kq.pdf")
+        self.assertEqual(self.client.get(groups["3_Triển khai"][0]["url"]).status_code, 200)
+
     def test_tai_len_vao_nhom_moi_dung_thu_muc_cu_neu_hoso_chua_doi_ten(self):
         self.put([make_dossier("a", "f1")])
-        shutil.rmtree(self.path("2026", "GÓP Ý", "f1", "4_Triển khai"))
-        self.write("2026/GÓP Ý/f1/Văn bản triển khai/co.pdf")
+        shutil.rmtree(self.path("2026", "GÓP Ý", "f1", "3_Triển khai"))
+        self.write("2026/GÓP Ý/f1/4_Triển khai/co.pdf")
         import io
-        r = self.client.post("/api/ho_so/f1/upload", data={"category": "4_Triển khai", "files": (io.BytesIO(b"x"), "moi.pdf")},
+        r = self.client.post("/api/ho_so/f1/upload", data={"category": "3_Triển khai", "files": (io.BytesIO(b"x"), "moi.pdf")},
                              content_type="multipart/form-data")
         self.assertEqual(r.status_code, 200, r.get_data(as_text=True))
-        self.assertTrue(os.path.isfile(self.path("2026", "GÓP Ý", "f1", "Văn bản triển khai", "moi.pdf")))
-        self.assertFalse(os.path.exists(self.path("2026", "GÓP Ý", "f1", "4_Triển khai")))
+        self.assertTrue(os.path.isfile(self.path("2026", "GÓP Ý", "f1", "4_Triển khai", "moi.pdf")))
+        self.assertFalse(os.path.exists(self.path("2026", "GÓP Ý", "f1", "3_Triển khai")))
 
     def test_ho_so_moi_tao_dung_ba_thu_muc_ten_moi(self):
         self.put([make_dossier("a", "f1")])
         names = sorted(os.listdir(self.path("2026", "GÓP Ý", "f1")))
-        self.assertEqual(names, ["1_Chỉ đạo", "2_Phụ lục", "4_Triển khai"])
+        self.assertEqual(names, ["1_Chỉ đạo", "2_Phụ lục", "3_Triển khai"])
 
     def test_canh_bao_khi_ten_file_hoac_duong_dan_qua_dai(self):
         self.put([make_dossier("a", "f1")])
@@ -238,14 +251,14 @@ class LuuTruTest(unittest.TestCase):
     def test_tai_len_tao_thu_muc_bao_cao_va_ban_nhap_khi_chua_co(self):
         self.put([make_dossier("a", "f1")])
         import io
-        for group in ("3_Báo cáo đơn vị", "5_Bản nháp"):
+        for group in ("4_Báo cáo đơn vị", "5_Bản nháp"):
             r = self.client.post("/api/ho_so/f1/upload", data={"category": group, "files": (io.BytesIO(b"x"), "a.pdf")},
                                  content_type="multipart/form-data")
             self.assertEqual(r.status_code, 200, group)
             self.assertTrue(os.path.isfile(self.path("2026", "GÓP Ý", "f1", group, "a.pdf")))
         # tên cũ của thư mục báo cáo vẫn được nhận và gộp về nhóm tên mới
         groups = self.client.get("/api/ho_so/f1/files").get_json()["categories"]
-        self.assertIn("3_Báo cáo đơn vị", groups)
+        self.assertIn("4_Báo cáo đơn vị", groups)
 
     def test_ho_so_chua_co_thu_muc_khong_ghi_vao_thu_muc_hien_hanh(self):
         d = make_dossier("a", "")
@@ -310,6 +323,62 @@ class LuuTruTest(unittest.TestCase):
             r = self.client.get(bad)
             self.assertEqual(r.status_code, 404, bad)
             self.assertNotIn(b"khong duoc lo", r.data, bad)
+
+    # --- tạo thư mục con chuẩn ---
+    def test_tao_thu_muc_bao_cao_don_vi_cho_ho_so(self):
+        self.put([make_dossier("a", "f1")])
+        self.assertFalse(os.path.isdir(self.path("2026", "GÓP Ý", "f1", "4_Báo cáo đơn vị")))
+        r = self.client.post("/api/ho_so/f1/folder", json={"category": "4_Báo cáo đơn vị"})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.get_json()["created"])
+        self.assertTrue(os.path.isdir(self.path("2026", "GÓP Ý", "f1", "4_Báo cáo đơn vị")))
+        # gọi lại: không tạo thêm
+        self.assertFalse(self.client.post("/api/ho_so/f1/folder", json={"category": "4_Báo cáo đơn vị"}).get_json()["created"])
+        groups = self.client.get("/api/ho_so/f1/files").get_json()["categories"]
+        self.assertIn("4_Báo cáo đơn vị", groups)
+
+    def test_tao_thu_muc_dung_ten_cu_neu_hoso_chua_doi_ten(self):
+        self.put([make_dossier("a", "f1")])
+        self.write("2026/GÓP Ý/f1/3_Báo cáo đơn vị/CAP A.pdf")
+        r = self.client.post("/api/ho_so/f1/folder", json={"category": "4_Báo cáo đơn vị"})
+        self.assertFalse(r.get_json()["created"])
+        self.assertFalse(os.path.exists(self.path("2026", "GÓP Ý", "f1", "4_Báo cáo đơn vị")))
+
+    def test_chi_tao_duoc_thu_muc_chuan_va_khong_thoat_ra_ngoai(self):
+        self.put([make_dossier("a", "f1")])
+        for bad in ("", "Tu dat ten", "../ngoai", "..", "4_Báo cáo đơn vị/../../x"):
+            r = self.client.post("/api/ho_so/f1/folder", json={"category": bad})
+            self.assertEqual(r.status_code, 400, bad)
+        self.assertEqual(self.client.post("/api/ho_so/khong-co/folder", json={"category": "5_Bản nháp"}).status_code, 404)
+        self.assertEqual(sorted(os.listdir(self.path("2026", "GÓP Ý"))), ["f1"])
+
+    # --- ghi đồng thời ---
+    def test_nhieu_so_luu_cung_luc_khong_lam_hong_hay_mat_du_lieu(self):
+        import threading
+        old_data = server.DATA_PATH
+        server.DATA_PATH = os.path.join(self.tmp, "data.json")
+        errors = []
+
+        def worker(name):
+            client = server.app.test_client()
+            for n in range(8):
+                r = client.put(f"/api/data/{name}", json=[{"id": f"{name}-{n}", "content": "x" * 3000}])
+                if r.status_code != 200:
+                    errors.append((name, r.get_data(as_text=True)))
+        try:
+            threads = [threading.Thread(target=worker, args=(name,)) for name in server.DATA_COLLECTIONS]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            with open(server.DATA_PATH, encoding="utf-8") as f:
+                saved = json.load(f)  # file nguyên vẹn, không bị ghi lẫn
+            for name in server.DATA_COLLECTIONS:
+                self.assertEqual([x["id"] for x in saved[name]], [f"{name}-7"], name)  # không lần lưu nào bị mất
+            self.assertEqual([f for f in os.listdir(self.tmp) if f.endswith(".tmp")], [])
+        finally:
+            server.DATA_PATH = old_data
 
     # --- giao diện ---
     def test_file_js_css_phuc_vu_dung_kieu_du_cho_registry_windows_sai(self):

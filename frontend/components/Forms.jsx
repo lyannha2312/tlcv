@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CATEGORIES, ISSUING_UNITS, SUPPORT_TYPES, getLocalDateTimeString, getDateRange, makeFolderName, folderNameProblem } from '../helpers.js';
 import { useDossierFiles } from './DossierFiles.jsx';
-import { STAGE_CONSULT, DOC_TYPE_CONSULT, REPORTS_FOLDER, FOLDER_DIRECTIVE, RESULT_FOLDER, folderLabel } from '../fileMatch.js';
+import { STAGE_CONSULT, DOC_TYPE_CONSULT, CONSULT_LABEL, REPORTS_FOLDER, FOLDER_DIRECTIVE, RESULT_FOLDER, folderLabel } from '../fileMatch.js';
 
 // ---- DossierForm ----
 export const DossierForm = ({ initialData, onClose, saveDossier }) => {
@@ -116,7 +116,7 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div><label className="block text-sm font-medium text-slate-700 mb-1">Đơn vị phát hành</label><input type="text" list="issuing-units" value={docForm.sender} onChange={e=>setDocForm({...docForm, sender: e.target.value})} placeholder="Chọn hoặc tự nhập" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500" /><datalist id="issuing-units">{ISSUING_UNITS.map(u => <option key={u} value={u} />)}</datalist></div>
-                            <div><label className="block text-sm font-medium text-slate-700 mb-1">Phân loại</label><select value={docForm.docType} onChange={e=>setDocForm({...docForm, docType: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"><option>Văn bản đính kèm</option><option>Văn bản chỉ đạo mới</option><option>Phụ lục</option><option>Văn bản kết quả</option><option>{DOC_TYPE_CONSULT}</option></select></div>
+                            <div><label className="block text-sm font-medium text-slate-700 mb-1">Phân loại</label><select value={docForm.docType} onChange={e=>setDocForm({...docForm, docType: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"><option>Văn bản đính kèm</option><option>Văn bản chỉ đạo mới</option><option>Phụ lục</option><option>Văn bản kết quả</option><option value={DOC_TYPE_CONSULT}>{CONSULT_LABEL}</option></select></div>
                         </div>
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung / Trích yếu</label><textarea rows="2" value={docForm.content} onChange={e=>setDocForm({...docForm, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
                         <div><label className="block text-sm font-medium text-amber-600 mb-1">Ghi chú (Mục đích)</label><textarea rows="2" value={docForm.note} onChange={e=>setDocForm({...docForm, note: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
@@ -133,8 +133,8 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
                         )}
                         {docForm.docType === DOC_TYPE_CONSULT && (
                             <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
-                                <p className="text-xs text-violet-700">Các file trong thư mục "{REPORTS_FOLDER}" sẽ được đếm và hiện ngay dưới văn bản này trên nhật ký xử lý.</p>
-                                <div><label className="block text-xs font-medium text-slate-600 mb-1">Hạn góp ý (nếu có)</label><input type="date" value={docForm.consultDeadline} onChange={e=>setDocForm({...docForm, consultDeadline: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-violet-500" /></div>
+                                <p className="text-xs text-violet-700">Ý kiến, báo cáo, danh sách do đơn vị gửi về, lưu trong thư mục "{REPORTS_FOLDER}", sẽ được đếm và hiện ngay dưới văn bản này trên nhật ký xử lý.</p>
+                                <div><label className="block text-xs font-medium text-slate-600 mb-1">Hạn đơn vị gửi (nếu có)</label><input type="date" value={docForm.consultDeadline} onChange={e=>setDocForm({...docForm, consultDeadline: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-violet-500" /></div>
                             </div>
                         )}
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Đường dẫn file</label><input type="text" value={docForm.filePath} onChange={e=>setDocForm({...docForm, filePath: e.target.value})} placeholder="Đường dẫn trên máy hoặc link Google Drive (https://...)" className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500 font-mono text-sm" /></div>
@@ -147,10 +147,10 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
                         <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
                             <label className="flex items-start gap-2 text-sm font-medium text-violet-800 cursor-pointer">
                                 <input type="checkbox" checked={progForm.consult} onChange={e=>setProgForm({...progForm, consult: e.target.checked})} className="mt-0.5" />
-                                <span>Đây là giai đoạn lấy ý kiến đơn vị / địa phương<span className="block text-xs font-normal text-violet-600">Các file trong thư mục "{REPORTS_FOLDER}" sẽ được đếm và hiện ngay tại mốc này. Không cần nhập từng đơn vị.</span></span>
+                                <span>Đây là giai đoạn lấy ý kiến / yêu cầu đơn vị, địa phương báo cáo<span className="block text-xs font-normal text-violet-600">Ý kiến, báo cáo, danh sách do đơn vị gửi về, lưu trong thư mục "{REPORTS_FOLDER}", sẽ được đếm và hiện ngay tại mốc này. Không cần nhập từng đơn vị.</span></span>
                             </label>
                             {progForm.consult && (
-                                <div><label className="block text-xs font-medium text-slate-600 mb-1">Hạn góp ý (nếu có)</label><input type="date" value={progForm.consultDeadline} onChange={e=>setProgForm({...progForm, consultDeadline: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-violet-500" /></div>
+                                <div><label className="block text-xs font-medium text-slate-600 mb-1">Hạn đơn vị gửi (nếu có)</label><input type="date" value={progForm.consultDeadline} onChange={e=>setProgForm({...progForm, consultDeadline: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-violet-500" /></div>
                             )}
                         </div>
                     </>

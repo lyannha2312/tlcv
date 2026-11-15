@@ -4,22 +4,24 @@
 //   2. số ký hiệu văn bản (205/PV01 ↔ 205-PV01_2026-06-01_....pdf; phụ lục "..._PhuLuc01" cũng khớp theo số);
 //   3. vai trò của thư mục, cho các file còn lại:
 //        1_Chỉ đạo + 2_Phụ lục   → mốc Khởi tạo (văn bản đến và phụ lục của nó);
-//        4_Triển khai            → mốc văn bản do đơn vị mình ban hành gần nhất (hoặc mốc Kết thúc);
-//        3_Báo cáo đơn vị        → mốc "Lấy ý kiến" (nếu có), còn không thì hiện thành một nhóm riêng.
+//        3_Triển khai            → mốc văn bản do đơn vị mình ban hành gần nhất (hoặc mốc Kết thúc);
+//        4_Báo cáo đơn vị        → mốc "Lấy ý kiến / báo cáo" (nếu có), còn không thì hiện thành một nhóm riêng.
 // Thư mục con khác (Xin ý kiến BTV, Khác...) là bản nháp/trao đổi: hiện thành nhóm riêng, không gắn vào mốc.
 
 export const STAGE_CONSULT = 'lay-y-kien';
-// Phân loại văn bản dành cho công văn gửi lấy ý kiến các đơn vị, địa phương (văn bản do mình ban hành).
+// Phân loại văn bản dành cho công văn gửi các đơn vị, địa phương để lấy ý kiến hoặc yêu cầu báo cáo, lập danh sách (văn bản do mình ban hành).
+// Giá trị này đã lưu trong dữ liệu hồ sơ nên giữ nguyên; tên hiển thị là CONSULT_LABEL.
 export const DOC_TYPE_CONSULT = 'Lấy ý kiến';
+export const CONSULT_LABEL = 'Lấy ý kiến / báo cáo';
 // Mốc đánh dấu giai đoạn lấy ý kiến: văn bản có phân loại trên, hoặc mốc tiến độ được tích chọn giai đoạn lấy ý kiến.
 export const isConsultRaw = (raw) => !!raw && (raw.docType === DOC_TYPE_CONSULT || raw.stage === STAGE_CONSULT);
 // Tên thư mục con chuẩn của hồ sơ (khớp backend/app.py). Số đứng đầu để Explorer/Drive xếp đúng quy trình.
 export const FOLDER_DIRECTIVE = '1_Chỉ đạo';
 export const FOLDER_APPENDIX = '2_Phụ lục';
-export const REPORTS_FOLDER = '3_Báo cáo đơn vị';
-export const RESULT_FOLDER = '4_Triển khai';
+export const RESULT_FOLDER = '3_Triển khai';
+export const REPORTS_FOLDER = '4_Báo cáo đơn vị';
 export const FOLDER_DRAFT = '5_Bản nháp';
-// Tên hiển thị: bỏ tiền tố số ("4_Triển khai" → "Triển khai").
+// Tên hiển thị: bỏ tiền tố số ("3_Triển khai" → "Triển khai").
 export const folderLabel = (name) => (name || '').replace(/^\d+_/, '');
 const INCOMING_FOLDERS = [FOLDER_DIRECTIVE, FOLDER_APPENDIX];
 const STANDARD_FOLDERS = [...INCOMING_FOLDERS, RESULT_FOLDER, REPORTS_FOLDER];

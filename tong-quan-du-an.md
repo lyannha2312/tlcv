@@ -25,8 +25,8 @@ ho-so/
         └── 2026-09-11_551-PX03_gop-y-chatbot/   ← thư mục hồ sơ
             ├── 1_Chỉ đạo/                  văn bản chỉ đạo (văn bản đến)
             ├── 2_Phụ lục/                  phụ lục của văn bản chỉ đạo
-            ├── 3_Báo cáo đơn vị/           báo cáo của CA đơn vị, địa phương (chỉ lưu file)
-            ├── 4_Triển khai/               văn bản triển khai (kết quả), kèm phụ lục của nó
+            ├── 3_Triển khai/               văn bản triển khai (kết quả), kèm phụ lục của nó
+            ├── 4_Báo cáo đơn vị/           mọi ý kiến, báo cáo, danh sách do CA đơn vị, địa phương gửi về (chỉ lưu file)
             └── 5_Bản nháp/                 bản nháp, xin ý kiến, trao đổi (tùy chọn)
 ```
 
@@ -49,11 +49,11 @@ Giao diện cảnh báo khi tên file hoặc đường dẫn quá dài.
 ## 3. Chức năng
 
 - **Bàn làm việc:** hồ sơ đang xử lý, tô màu theo chuyên đề, hạn xử lý, nhãn Khẩn, task nhỏ kèm Pomodoro.
-- **Hồ sơ và Nhật ký xử lý:** mỗi mốc có một nhãn loại và một dòng "số văn bản · ngày ban hành". Loại mốc: Khởi tạo, Văn bản (đính kèm, chỉ đạo mới, phụ lục, kết quả), **Lấy ý kiến**, Tiến độ, Kết thúc. Thẻ **Kết Quả Cuối Cùng** nằm ngay dưới nhật ký.
-- **Phân loại "Lấy ý kiến":** công văn gửi lấy ý kiến, có thể ghi hạn góp ý. Các báo cáo trong `3_Báo cáo đơn vị` được đếm và hiện ngay dưới mốc này. Báo cáo tuần vẫn tính như văn bản kết quả.
+- **Hồ sơ và Nhật ký xử lý:** mỗi mốc có một nhãn loại và một dòng "số văn bản · ngày ban hành". Loại mốc: Khởi tạo, Văn bản (đính kèm, chỉ đạo mới, phụ lục, kết quả), **Lấy ý kiến / báo cáo**, Tiến độ, Kết thúc. Thẻ **Kết Quả Cuối Cùng** nằm ngay dưới nhật ký.
+- **Phân loại "Lấy ý kiến / báo cáo":** công văn gửi đơn vị, địa phương để lấy ý kiến hoặc yêu cầu báo cáo, lập danh sách (vd. cán bộ đầu mối), có thể ghi hạn đơn vị gửi. Mọi file đơn vị gửi về trong `4_Báo cáo đơn vị` được đếm và hiện ngay dưới mốc này. Báo cáo tuần vẫn tính như văn bản kết quả. (Giá trị lưu trong dữ liệu vẫn là `Lấy ý kiến`.)
 - **Gắn file vào nhật ký (tự động):** theo tên file hoặc đường dẫn khai trong mốc, rồi theo số ký hiệu, rồi theo vai trò thư mục (chỉ đạo/phụ lục vào mốc Khởi tạo, triển khai vào mốc văn bản kết quả). Tên file chứa số ký hiệu thì khớp đúng mốc. Hiện hơn 99% file đã được gắn.
 - **Quản lý tài liệu:** icon theo loại file (PDF đỏ, Word xanh dương, Excel xanh lá...), mỗi file một dòng, bấm để xem ở khung đọc bên phải (PDF và ảnh xem trực tiếp; Word, Excel mở trên Drive hoặc tải xuống), tải lên, xóa, Làm mới. Link Google Drive lưu trong ô "Đường dẫn file" của mốc mở được bằng một nút.
-- **Cảnh báo khi đóng hồ sơ** mà thư mục thiếu file ở `1_Chỉ đạo` hoặc `4_Triển khai` (không chặn).
+- **Cảnh báo khi đóng hồ sơ** mà thư mục thiếu file ở `1_Chỉ đạo` hoặc `3_Triển khai` (không chặn).
 - **Kho hồ sơ:** tìm kiếm, lọc theo chuyên đề, trạng thái, khoảng ngày; cây hồ sơ bên trái theo chuyên đề.
 - **Các sổ ghi chép:** Hỗ trợ (chọn loại DNIS / Mail công vụ / QLVB V3), nhiệm vụ phối hợp, cuộc họp; **Kế hoạch tuần** tự tổng hợp hoạt động từ dữ liệu có sẵn.
 - **Đồng bộ và sao lưu:** lưu/tải Google Drive (`QLCV_Cloud_Backup.json`), sao lưu, phục hồi, import hồ sơ từ file (có mật khẩu xác nhận).
@@ -83,7 +83,7 @@ _QLCV_Merged/
     ├── App.jsx                  điều phối, đồng bộ máy chủ, mật khẩu xác nhận
     ├── views/                   Workspace, Detail, Archive, Planner, Support, Coordinations, Meetings
     ├── components/              DossierFiles, DossierTree, Forms, PdfViewer, Modal
-    ├── fileMatch.js             gắn file vào mốc, tên thư mục chuẩn, phân loại "Lấy ý kiến"
+    ├── fileMatch.js             gắn file vào mốc, tên thư mục chuẩn, phân loại "Lấy ý kiến / báo cáo"
     ├── helpers.js, serverSync.js, driveSync.js, security.js
     └── .env.example             mẫu biến môi trường
 ```

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { formatDate, CATEGORY_COLORS, getLocalDateTimeString } from '../helpers.js';
-import DossierFiles, { useDossierFiles, useLocalFilesOptIn, FileChip, openDossierFolder } from '../components/DossierFiles.jsx';
+import DossierFiles, { useDossierFiles, useLocalFilesOptIn, FileChip, openDossierFolder, ensureDossierFolder } from '../components/DossierFiles.jsx';
 import PdfViewer from '../components/PdfViewer.jsx';
-import { attachFiles, STAGE_CONSULT, DOC_TYPE_CONSULT, REPORTS_FOLDER, isConsultRaw, folderLabel, isWebLink } from '../fileMatch.js';
+import { attachFiles, STAGE_CONSULT, DOC_TYPE_CONSULT, CONSULT_LABEL, REPORTS_FOLDER, isConsultRaw, folderLabel, isWebLink } from '../fileMatch.js';
 import dangIcon from '../assets/dang-icon.png';
 import {
     IconClock, IconCalendar, IconEdit, IconCheckCircle, IconTrash,
@@ -16,7 +16,7 @@ const TYPE_STYLE = {
     directive:{ dot: 'bg-rose-500',    badge: 'bg-rose-50 text-rose-700 border-rose-200',          label: 'VB Chỉ đạo mới' },
     result:   { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'VB Kết quả'     },
     progress: { dot: 'bg-amber-500',   badge: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'Tiến độ'        },
-    consult:  { dot: 'bg-violet-500',  badge: 'bg-violet-50 text-violet-700 border-violet-200',    label: 'Lấy ý kiến'     },
+    consult:  { dot: 'bg-violet-500',  badge: 'bg-violet-50 text-violet-700 border-violet-200',    label: CONSULT_LABEL    },
     finish:   { dot: 'bg-slate-700',   badge: 'bg-slate-100 text-slate-700 border-slate-300',      label: 'Kết thúc'       },
 };
 
@@ -55,12 +55,12 @@ const FileList = ({ files, selectedKey, onPick, limit = 5 }) => {
     );
 };
 
-// Báo cáo của các đơn vị/địa phương: chỉ đếm và liệt kê file, không theo dõi từng đơn vị.
+// Ý kiến, báo cáo, danh sách của các đơn vị/địa phương gửi về: chỉ đếm và liệt kê file, không theo dõi từng đơn vị.
 const ReportsList = ({ files, selectedKey, onPick, deadline }) => (
     <details className="mt-2.5 rounded-lg border border-violet-200 bg-violet-50/40" open={files.length > 0 && files.length <= 5}>
         <summary className="px-3 py-2 text-xs font-semibold text-violet-800 cursor-pointer select-none">
-            📥 {files.length > 0 ? `${files.length} báo cáo từ các đơn vị` : 'Chưa có báo cáo nào trong thư mục'}
-            {deadline ? ` · hạn góp ý ${deadline.split('-').reverse().join('/')}` : ''}
+            📥 {files.length > 0 ? `${files.length} file đơn vị gửi về` : 'Chưa có file nào trong thư mục'}
+            {deadline ? ` · hạn gửi ${deadline.split('-').reverse().join('/')}` : ''}
         </summary>
         {files.length > 0 && (
             <div className="px-3 pb-3 space-y-1.5">
@@ -94,6 +94,18 @@ const DetailView = ({
     const files = useDossierFiles(withViewer ? activeDossier.folderPath : null, remote);
 
     useEffect(() => { setPickedFile(null); }, [activeDossier?.id]);
+
+    // Hồ sơ có mốc "Lấy ý kiến / báo cáo" mà chưa có thư mục báo cáo của đơn vị thì tạo luôn, để có chỗ thả file vào.
+    // Chỉ làm khi giao diện chạy qua Flask (trang GitHub Pages chỉ đọc); mỗi hồ sơ chỉ thử một lần để không lặp khi lỗi.
+    const hasConsult = !!activeDossier?.relatedDocs?.some(isConsultRaw);
+    const triedFolders = useRef(new Set());
+    useEffect(() => {
+        const folderPath = activeDossier?.folderPath;
+        if (serverMode !== true || !hasConsult || !folderPath || !files.categories || files.categories[REPORTS_FOLDER]) return;
+        if (triedFolders.current.has(folderPath)) return;
+        triedFolders.current.add(folderPath);
+        ensureDossierFolder(folderPath, REPORTS_FOLDER).then(files.reload).catch(() => { /* không tạo được thì thôi, tải file lên vẫn tự tạo */ });
+    }, [serverMode, hasConsult, files.categories, activeDossier?.folderPath]);
 
     // Chia hai cột (timeline | khung đọc) khi đủ rộng; danh sách hồ sơ bên trái đang mở thì cần rộng hơn.
     const minWide = treeOpen ? 1536 : 1280;
@@ -387,7 +399,7 @@ const DetailView = ({
             {attached.reports.length > 0 && (
                 <div className="bg-white border border-violet-200 rounded-2xl shadow-sm p-4 md:p-5">
                     <h4 className="font-bold text-slate-800 mb-1 flex items-center gap-1.5 text-sm"><IconFileText className="w-4 h-4 text-violet-500"/> {folderLabel(REPORTS_FOLDER)} ({attached.reports.length})</h4>
-                    <p className="text-xs text-slate-500">Hồ sơ chưa có mốc "Lấy ý kiến". Thêm một mốc Tiến độ và chọn "Đây là giai đoạn lấy ý kiến" để số báo cáo hiện ngay trên nhật ký xử lý.</p>
+                    <p className="text-xs text-slate-500">Hồ sơ chưa có mốc "{CONSULT_LABEL}". Thêm một mốc Tiến độ và chọn "Đây là giai đoạn lấy ý kiến / yêu cầu đơn vị, địa phương báo cáo" để số file đơn vị gửi về hiện ngay trên nhật ký xử lý.</p>
                     <ReportsList files={attached.reports} selectedKey={selectedFile?.key} onPick={pickFile} />
                 </div>
             )}

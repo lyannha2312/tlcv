@@ -4,7 +4,7 @@ Trợ lý công việc - máy chủ Flask chạy trên máy cá nhân (PV01, Cô
 
 - Phục vụ giao diện React đã build (qlcv_dist/) và lưu dữ liệu: dossiers.json (hồ sơ), data.json (các sổ ghi chép).
 - Quản lý tài liệu của từng hồ sơ trong kho (HOSO_ROOT trong config.json), theo cấu trúc:
-      {năm}/{chuyên đề}/{tên thư mục hồ sơ}/{1_Chỉ đạo|2_Phụ lục|3_Báo cáo đơn vị|4_Triển khai|5_Bản nháp}/
+      {năm}/{chuyên đề}/{tên thư mục hồ sơ}/{1_Chỉ đạo|2_Phụ lục|3_Triển khai|4_Báo cáo đơn vị|5_Bản nháp}/
   Đường dẫn của hồ sơ được lưu cố định (storagePath); đổi chuyên đề/năm/tên thì thư mục chuyển theo.
 
 Cài đặt:  pip install -r requirements.txt
@@ -12,6 +12,7 @@ Chạy:     python app.py     (hoặc bấm đúp Mo_KhoHoSo.bat)
 Mở web:   http://localhost:5001
 """
 
+import functools
 import json
 import mimetypes
 import os
@@ -97,17 +98,20 @@ PORT = int(os.environ.get("QLCV_PORT", "5001"))
 # Số đứng đầu để Explorer/Drive sắp xếp đúng quy trình; tên ngắn để đường dẫn trên Drive không quá dài.
 FOLDER_DIRECTIVE = "1_Chỉ đạo"          # văn bản chỉ đạo (văn bản đến)
 FOLDER_APPENDIX = "2_Phụ lục"           # phụ lục kèm văn bản chỉ đạo
-FOLDER_REPORTS = "3_Báo cáo đơn vị"     # báo cáo của CA đơn vị, địa phương (chỉ lưu file)
-FOLDER_RESULT = "4_Triển khai"          # văn bản triển khai (kết quả công việc), kèm phụ lục của nó
+FOLDER_RESULT = "3_Triển khai"          # văn bản triển khai (kết quả công việc), kèm phụ lục của nó
+FOLDER_REPORTS = "4_Báo cáo đơn vị"     # mọi báo cáo, ý kiến, danh sách do CA đơn vị, địa phương gửi về (chỉ lưu file)
 FOLDER_DRAFT = "5_Bản nháp"             # bản nháp, trao đổi, xin ý kiến
-CATEGORIES = [FOLDER_DIRECTIVE, FOLDER_APPENDIX, FOLDER_REPORTS, FOLDER_RESULT, FOLDER_DRAFT]
+CATEGORIES = [FOLDER_DIRECTIVE, FOLDER_APPENDIX, FOLDER_RESULT, FOLDER_REPORTS, FOLDER_DRAFT]
 DEFAULT_FOLDERS = [FOLDER_DIRECTIVE, FOLDER_APPENDIX, FOLDER_RESULT]  # tạo sẵn cho hồ sơ mới
-# Tên cũ (trước 30/10/2026): vẫn nhận ra để hồ sơ chưa đổi tên thư mục không bị hỏng.
+# Tên cũ: vẫn nhận ra để hồ sơ chưa đổi tên thư mục không bị hỏng.
 OLD_FOLDER_NAMES = {
     "Văn bản chỉ đạo": FOLDER_DIRECTIVE,
     "Phụ lục": FOLDER_APPENDIX,
     "Báo cáo của các đơn vị": FOLDER_REPORTS,
     "Văn bản triển khai": FOLDER_RESULT,
+    # Số thứ tự cũ (trước 13/11/2026: 3 là báo cáo, 4 là triển khai).
+    "3_Báo cáo đơn vị": FOLDER_REPORTS,
+    "4_Triển khai": FOLDER_RESULT,
 }
 
 
@@ -196,6 +200,25 @@ def load_dossiers():
         return []
 
 
+# Một lần chỉ một yêu cầu được đọc-sửa-ghi dossiers.json / data.json. Giao diện lưu từng sổ riêng và có thể gửi nhiều
+# yêu cầu cùng lúc; Flask xử lý song song nên không khóa thì các lần ghi đè lên nhau và làm hỏng file.
+DATA_LOCK = threading.RLock()
+
+
+def locked(view):
+    """Bọc một route ghi dữ liệu trong DATA_LOCK."""
+    @functools.wraps(view)
+    def wrapper(*args, **kwargs):
+        with DATA_LOCK:
+            return view(*args, **kwargs)
+    return wrapper
+
+
+def temp_file_for(path):
+    """Tên file tạm riêng cho từng lần ghi (không dùng chung một tên giữa các luồng)."""
+    return f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
+
+
 def save_dossiers(dossiers):
     import json
     if os.path.exists(JSON_PATH):
@@ -221,13 +244,11 @@ def save_dossiers(dossiers):
         except Exception as e:
             print(f"Warning: Could not clean up old backups: {e}")
             
-    temp_path = JSON_PATH + ".tmp"
+    temp_path = temp_file_for(JSON_PATH)
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
             json.dump({"version": 2, "dossiers": dossiers}, f, ensure_ascii=False, indent=4)
-        if os.path.exists(JSON_PATH):
-            os.remove(JSON_PATH)
-        os.rename(temp_path, JSON_PATH)
+        os.replace(temp_path, JSON_PATH)  # thay nguyên tử, không có lúc file không tồn tại
     except Exception as e:
         if os.path.exists(temp_path):
             try:
@@ -272,7 +293,7 @@ def save_data(data):
 
     payload = {"version": 2}
     payload.update({name: data.get(name, []) for name in DATA_COLLECTIONS})
-    temp_path = DATA_PATH + ".tmp"
+    temp_path = temp_file_for(DATA_PATH)
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=4)
@@ -518,7 +539,7 @@ def collect_files(group_dir):
 def list_dossier_groups(folder, storage_path):
     """Mọi file của một hồ sơ, chia nhóm theo thư mục con đúng tên của nó.
 
-    Luôn có 3 nhóm chuẩn (1_Chỉ đạo, 2_Phụ lục, 4_Triển khai); báo cáo đơn vị và bản nháp chỉ khi thư mục đó
+    Luôn có 3 nhóm chuẩn (1_Chỉ đạo, 2_Phụ lục, 3_Triển khai); báo cáo đơn vị và bản nháp chỉ khi thư mục đó
     tồn tại; các thư mục con khác (vd. "Xin ý kiến BTV") hiện đúng tên; file nằm lẻ ở gốc hồ sơ vào nhóm "Khác".
     Thư mục còn mang tên cũ ("Văn bản chỉ đạo"...) được gộp vào nhóm tên mới tương ứng.
     """
@@ -621,6 +642,7 @@ def api_dossiers_get():
 
 
 @app.route("/api/dossiers", methods=["PUT"])
+@locked
 def api_dossiers_put():
     """QLCV ghi cả danh sách hồ sơ.
 
@@ -707,6 +729,25 @@ def api_open_folder(key):
 
 
 
+
+
+@app.route("/api/ho_so/<path:key>/folder", methods=["POST"])
+def api_create_group_folder(key):
+    """Tạo thư mục con chuẩn (vd. 4_Báo cáo đơn vị) cho hồ sơ; có sẵn rồi (kể cả tên cũ) thì giữ nguyên."""
+    target_dossier = next((d for d in load_dossiers() if (d.get("folderPath") or d.get("folderName", "")) == key), None)
+    if not target_dossier:
+        return jsonify({"error": "Không tìm thấy hồ sơ"}), 404
+    body = request.get_json(silent=True) or {}
+    canonical = canonical_category(str(body.get("category", "")).strip())
+    if not canonical:
+        return jsonify({"error": "Chỉ tạo được các thư mục chuẩn của hồ sơ"}), 400
+    folder, _, _, _ = folder_path_for(target_dossier)
+    if not folder:
+        return jsonify({"error": "Hồ sơ chưa có thư mục"}), 400
+    path = category_dir(folder, canonical)
+    created = not os.path.isdir(path)
+    os.makedirs(path, exist_ok=True)
+    return jsonify({"ok": True, "created": created, "folder": os.path.basename(path)})
 
 
 def safe_pdf_filename(raw):
@@ -805,6 +846,7 @@ def api_data_get():
 
 
 @app.route("/api/data/<name>", methods=["PUT"])
+@locked
 def api_data_put(name):
     """Thay toàn bộ một nhóm (supportLogs, coordLogs, ...) bằng danh sách gửi lên."""
     if name not in DATA_COLLECTIONS:
@@ -822,6 +864,7 @@ def api_data_put(name):
 
 
 @app.route("/api/data/import", methods=["POST"])
+@locked
 def api_data_import():
     """Gộp các nhóm dữ liệu từ một file Backup_QLCV / QLCV_Cloud_Backup.json theo id, không ghi đè mục đang có."""
     body = request.get_json(silent=True)

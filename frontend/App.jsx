@@ -29,6 +29,7 @@ import DetailView from './views/DetailView.jsx';
 import { initGoogleAuth, loginAndSync, uploadToDrive, downloadFromDrive } from './driveSync.js';
 import { detectBackend, loadServerData, loadDossiers, saveCollection } from './serverSync.js';
 import { APP_PASSWORD } from './security.js';
+import { DOC_TYPE_CONSULT, CONSULT_LABEL } from './fileMatch.js';
 
 // Mỗi mục một tông màu: chữ và icon cùng tông; `on` là khi đang chọn, `off` là khi chưa chọn (viết đủ tên class để Tailwind nhận ra).
 const NAV_ITEMS = [
@@ -518,7 +519,7 @@ const App = () => {
                 vanBanData.push({
                     "STT": stt,
                     "Tên Hồ sơ": d.title,
-                    "Phân loại": rd.docType || 'Văn bản đính kèm',
+                    "Phân loại": rd.docType === DOC_TYPE_CONSULT ? CONSULT_LABEL : (rd.docType || 'Văn bản đính kèm'),
                     "Số Ký hiệu VB": rd.number || '',
                     "Ngày phát hành": rd.date ? rd.date.split('-').reverse().join('/') : '',
                     "Đơn vị phát hành": rd.sender || '',
