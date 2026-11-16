@@ -13,6 +13,8 @@ export const getLocalDateTimeString = (dateObj = new Date()) => {
 };
 
 // Cuộc họp / tập huấn có thể kéo dài nhiều ngày: date = lúc bắt đầu (ISO), endDate = ngày kết thúc 'YYYY-MM-DD' (tùy chọn).
+export const MEETING_KINDS = ['Họp', 'Tập huấn', 'Công tác'];
+export const meetingKind = (m) => MEETING_KINDS.includes(m.kind) ? m.kind : 'Họp';
 export const meetingStartDay = (m) => getLocalDateTimeString(m.date).slice(0, 10);
 export const meetingEndDay = (m) => (m.endDate && m.endDate > meetingStartDay(m)) ? m.endDate : meetingStartDay(m);
 export const meetingCoversDay = (m, dayStr) => !!m.date && dayStr >= meetingStartDay(m) && dayStr <= meetingEndDay(m);

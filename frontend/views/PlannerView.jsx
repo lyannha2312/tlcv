@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDayName, getMonday, getSupportType, meetingCoversDay, meetingDays, meetingDayIndex } from '../helpers.js';
+import { getDayName, getMonday, getSupportType, meetingCoversDay, meetingKind, meetingDays, meetingDayIndex } from '../helpers.js';
 import { DOC_TYPE_CONSULT, CONSULT_LABEL } from '../fileMatch.js';
 import {
     IconCalendar, IconPlus, IconEdit, IconTrash,
@@ -142,7 +142,7 @@ const PlannerView = ({
             acts.push({ id: l.id, text: `Chỉ đạo: ${l.content}\nTiến độ: ${l.progress}`, source: `Phối hợp: ${l.summary}`, icon: <IconBriefcase className="w-4 h-4"/>, color: 'text-orange-700' })
         );
         meetings.filter(m => meetingCoversDay(m, dateStr)).forEach(m =>
-            acts.push({ id: `${m.id}_${dateStr}`, text: `Nội dung: ${m.content}`, source: `Cuộc họp${meetingDays(m) > 1 ? ` (ngày ${meetingDayIndex(m, dateStr)}/${meetingDays(m)})` : ''} - ${m.location || 'Chưa rõ ĐĐ'}`, icon: <IconUsers className="w-4 h-4"/>, color: 'text-teal-700' })
+            acts.push({ id: `${m.id}_${dateStr}`, text: `Địa điểm: ${m.location || 'Chưa rõ'}`, source: `${meetingKind(m)}${meetingDays(m) > 1 ? ` (ngày ${meetingDayIndex(m, dateStr)}/${meetingDays(m)})` : ''} - ${m.content}`, icon: <IconUsers className="w-4 h-4"/>, color: 'text-teal-700' })
         );
         return acts;
     };

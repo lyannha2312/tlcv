@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CATEGORIES, ISSUING_UNITS, SUPPORT_TYPES, getLocalDateTimeString, getDateRange, makeFolderName, folderNameProblem } from '../helpers.js';
+import { CATEGORIES, MEETING_KINDS, ISSUING_UNITS, SUPPORT_TYPES, getLocalDateTimeString, getDateRange, makeFolderName, folderNameProblem } from '../helpers.js';
 import { useDossierFiles } from './DossierFiles.jsx';
 import { STAGE_CONSULT, DOC_TYPE_CONSULT, CONSULT_LABEL, REPORTS_FOLDER, FOLDER_DIRECTIVE, RESULT_FOLDER, folderLabel } from '../fileMatch.js';
 
@@ -306,7 +306,7 @@ export const ScheduleForm = ({ initialData, targetDate, onClose, saveSchedule, s
 export const MeetingForm = ({ initialData, onClose, saveMeeting }) => {
     const [form, setForm] = useState(() => {
         if (initialData) return { ...initialData, date: getLocalDateTimeString(initialData.date) };
-        return { date: getLocalDateTimeString(), host: '', location: '', content: '', notes: '', docRef: '', category: 'KHÁC' };
+        return { date: getLocalDateTimeString(), host: '', location: '', content: '', notes: '', docRef: '', category: 'KHÁC', kind: 'Họp' };
     });
 
     const handleSubmit = (e) => {
@@ -328,7 +328,10 @@ export const MeetingForm = ({ initialData, onClose, saveMeeting }) => {
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Đơn vị chủ trì</label><input type="text" value={form.host} onChange={e=>setForm({...form, host: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Căn cứ VB (Giấy mời)</label><input type="text" value={form.docRef} onChange={e=>setForm({...form, docRef: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
             </div>
-            <div><label className="block text-sm font-medium text-slate-700 mb-1">Chuyên mục</label><select value={form.category || 'KHÁC'} onChange={e=>setForm({...form, category: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500">{CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
+            <div className="grid grid-cols-2 gap-4">
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Chuyên mục</label><select value={form.category || 'KHÁC'} onChange={e=>setForm({...form, category: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500">{CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Loại</label><select value={form.kind || 'Họp'} onChange={e=>setForm({...form, kind: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500">{MEETING_KINDS.map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+            </div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung cuộc họp <span className="text-rose-500">*</span></label><textarea required rows="3" value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500"></textarea></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Ghi chú / Kết luận</label><textarea rows="3" value={form.notes} onChange={e=>setForm({...form, notes: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500"></textarea></div>
             <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button><button type="submit" className="px-5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium shadow-md">Lưu Cuộc Họp</button></div>
