@@ -131,8 +131,8 @@ const DetailView = ({
                 {activeDossier.originalDoc.summary && <div>{activeDossier.originalDoc.summary}</div>}
                 {activeDossier.originalDoc.content && (
                     <div className="mt-1 text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                        <span className="font-semibold text-slate-800">Ý kiến chỉ đạo: </span>
-                        <ExpandableText text={activeDossier.originalDoc.content} clamp={2} className="inline text-slate-700 text-sm" />
+                        <div className="font-semibold text-slate-800">Ý kiến chỉ đạo:</div>
+                        <ExpandableText text={activeDossier.originalDoc.content} clamp={2} className="text-slate-700 text-sm" />
                     </div>
                 )}
             </div>

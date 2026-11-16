@@ -61,14 +61,16 @@ export const attachFiles = (events, categories) => {
         // filePath là link web thì không dùng để đoán tên file
         const pathName = isWebLink(evt.rawData?.filePath) ? '' : baseName(evt.rawData?.filePath);
         const names = [evt.rawData?.fileName, pathName].filter(Boolean).map(n => slug(dropExt(n)));
-        if (names.length) claim(i, f => names.includes(slug(dropExt(f.fileName))));
+        // Mốc Khởi tạo chỉ nhận file của văn bản đến (1_Chỉ đạo, 2_Phụ lục), không nhận file triển khai dù trùng số ký hiệu.
+        const allowed = f => evt.type !== 'init' || INCOMING_FOLDERS.includes(f.category);
+        if (names.length) claim(i, f => allowed(f) && names.includes(slug(dropExt(f.fileName))));
     });
 
     events.forEach((evt, i) => {
         const token = slug(evt.number);
         if (token.length < 4) return;
         const re = new RegExp(`(^|-)${escapeRe(token)}(-|$)`);
-        claim(i, f => re.test(slug(dropExt(f.fileName))));
+        claim(i, f => (evt.type !== 'init' || INCOMING_FOLDERS.includes(f.category)) && re.test(slug(dropExt(f.fileName))));
     });
 
     // Bản nháp/bản Word của một văn bản đi cùng mốc với bản đã ký (tên giống nhau, chỉ khác số ký hiệu ở đầu và đuôi _signed).
