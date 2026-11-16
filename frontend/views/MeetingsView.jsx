@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatDate, CATEGORY_COLORS } from '../helpers.js';
+import { formatDate, CATEGORY_COLORS, meetingDays, meetingEndDay } from '../helpers.js';
 import { IconUsers, IconPlus, IconEdit, IconTrash } from '../Icons.jsx';
 
 const MeetingsView = ({
@@ -36,6 +36,11 @@ const MeetingsView = ({
                                 <tr key={meeting.id} className="hover:bg-teal-50/30 group align-top">
                                     <td className="p-3 pl-5">
                                         <div className="font-semibold text-teal-700">{formatDate(meeting.date)}</div>
+                                        {meetingDays(meeting) > 1 && (
+                                            <div className="text-xs font-semibold text-teal-600 mt-0.5">
+                                                → {meetingEndDay(meeting).split('-').reverse().join('/')} <span className="font-medium text-slate-500">({meetingDays(meeting)} ngày)</span>
+                                            </div>
+                                        )}
                                         <div className="text-slate-500 text-xs mt-1">{meeting.location || 'Chưa có địa điểm'}</div>
                                     </td>
                                     <td className="p-3">

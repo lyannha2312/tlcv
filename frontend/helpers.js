@@ -12,7 +12,16 @@ export const getLocalDateTimeString = (dateObj = new Date()) => {
     return d.toISOString().slice(0, 16);
 };
 
-export const getMonday = (d) => {
+// Cuộc họp / tập huấn có thể kéo dài nhiều ngày: date = lúc bắt đầu (ISO), endDate = ngày kết thúc 'YYYY-MM-DD' (tùy chọn).
+export const meetingStartDay = (m) => getLocalDateTimeString(m.date).slice(0, 10);
+export const meetingEndDay = (m) => (m.endDate && m.endDate > meetingStartDay(m)) ? m.endDate : meetingStartDay(m);
+export const meetingCoversDay = (m, dayStr) => !!m.date && dayStr >= meetingStartDay(m) && dayStr <= meetingEndDay(m);
+const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+export const meetingDays = (m) => dayDiff(meetingStartDay(m), meetingEndDay(m)) + 1;
+// Số thứ tự ngày trong đợt (1-based) tại ngày dayStr.
+export const meetingDayIndex = (m, dayStr) => dayDiff(meetingStartDay(m), dayStr) + 1;
+
+export const getMonday =(d) => {
     const date = new Date(d);
     const day = date.getDay();
     const diff = date.getDate() - day + (day === 0 ? -6 : 1);

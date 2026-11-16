@@ -309,14 +309,21 @@ export const MeetingForm = ({ initialData, onClose, saveMeeting }) => {
         return { date: getLocalDateTimeString(), host: '', location: '', content: '', notes: '', docRef: '', category: 'KHÁC' };
     });
 
-    const handleSubmit = (e) => { e.preventDefault(); if (form.content) { saveMeeting({ ...form, date: new Date(form.date).toISOString() }, initialData?.id); onClose(); } };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!form.content) return;
+        const endDate = form.endDate && form.endDate > form.date.slice(0, 10) ? form.endDate : '';
+        saveMeeting({ ...form, endDate, date: new Date(form.date).toISOString() }, initialData?.id);
+        onClose();
+    };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Thời gian họp <span className="text-rose-500">*</span></label><input required type="datetime-local" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Địa điểm</label><input type="text" value={form.location} onChange={e=>setForm({...form, location: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Thời gian bắt đầu <span className="text-rose-500">*</span></label><input required type="datetime-local" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Kết thúc ngày <span className="text-slate-400 font-normal">(nếu kéo dài nhiều ngày)</span></label><input type="date" min={form.date.slice(0, 10)} value={form.endDate || ''} onChange={e=>setForm({...form, endDate: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
             </div>
+            <div><label className="block text-sm font-medium text-slate-700 mb-1">Địa điểm</label><input type="text" value={form.location} onChange={e=>setForm({...form, location: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
             <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3 mt-3">
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Đơn vị chủ trì</label><input type="text" value={form.host} onChange={e=>setForm({...form, host: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Căn cứ VB (Giấy mời)</label><input type="text" value={form.docRef} onChange={e=>setForm({...form, docRef: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500" /></div>
