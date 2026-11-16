@@ -59,9 +59,14 @@ const MeetingsView = ({
                                     <td className="p-3 text-slate-700 whitespace-pre-wrap">{meeting.content}</td>
                                     <td className="p-3 text-slate-600 whitespace-pre-wrap">
                                         {meeting.notes || (Object.keys(meeting.dayNotes || {}).length ? '' : '-')}
-                                        {Object.entries(meeting.dayNotes || {}).sort(([a], [b]) => a.localeCompare(b)).map(([d, t]) => (
-                                            <div key={d} className="mt-1"><span className="font-semibold text-teal-700">{d.split('-').reverse().slice(0, 2).join('/')}:</span> {t}</div>
-                                        ))}
+                                        {Object.keys(meeting.dayNotes || {}).length > 0 && (
+                                            <details className="mt-1 group">
+                                                <summary className="cursor-pointer select-none text-xs font-semibold text-teal-700 hover:text-teal-800">Ghi chú theo ngày ({Object.keys(meeting.dayNotes).length})</summary>
+                                                {Object.entries(meeting.dayNotes).sort(([a], [b]) => a.localeCompare(b)).map(([d, t]) => (
+                                                    <div key={d} className="mt-1"><span className="font-semibold text-teal-700">{d.split('-').reverse().slice(0, 2).join('/')}:</span> {t}</div>
+                                                ))}
+                                            </details>
+                                        )}
                                     </td>
                                     <td className="p-3 text-center">
                                         <div className="flex justify-center gap-1">
