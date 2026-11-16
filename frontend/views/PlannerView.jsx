@@ -142,7 +142,8 @@ const PlannerView = ({
             acts.push({ id: l.id, text: `Chỉ đạo: ${l.content}\nTiến độ: ${l.progress}`, source: `Phối hợp: ${l.summary}`, icon: <IconBriefcase className="w-4 h-4"/>, color: 'text-orange-700' })
         );
         meetings.filter(m => meetingCoversDay(m, dateStr)).forEach(m =>
-            acts.push({ id: `${m.id}_${dateStr}`, text: `Địa điểm: ${m.location || 'Chưa rõ'}`, source: `${meetingKind(m)}${meetingDays(m) > 1 ? ` (ngày ${meetingDayIndex(m, dateStr)}/${meetingDays(m)})` : ''} - ${m.content}`, icon: <IconUsers className="w-4 h-4"/>, color: 'text-teal-700' })
+            acts.push({ id: `${m.id}_${dateStr}`, text: `Địa điểm: ${m.location || 'Chưa rõ'}${m.dayNotes?.[dateStr] ? `
+Ghi chú: ${m.dayNotes[dateStr]}` : ''}`, source: `${meetingKind(m)}${meetingDays(m) > 1 ? ` (ngày ${meetingDayIndex(m, dateStr)}/${meetingDays(m)})` : ''} - ${m.content}`, icon: <IconUsers className="w-4 h-4"/>, color: 'text-teal-700' })
         );
         return acts;
     };

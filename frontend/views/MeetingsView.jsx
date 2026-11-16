@@ -2,6 +2,12 @@ import React from 'react';
 import { formatDate, CATEGORY_COLORS, meetingDays, meetingEndDay, meetingKind } from '../helpers.js';
 import { IconUsers, IconPlus, IconEdit, IconTrash } from '../Icons.jsx';
 
+const KIND_STYLE = {
+    'Họp': 'bg-blue-600 text-white',
+    'Tập huấn': 'bg-amber-500 text-white',
+    'Công tác': 'bg-violet-600 text-white',
+};
+
 const MeetingsView = ({
     meetings,
     setMeetingModalConfig,
@@ -35,7 +41,7 @@ const MeetingsView = ({
                             {meetings.sort((a,b) => new Date(b.date) - new Date(a.date)).map(meeting => (
                                 <tr key={meeting.id} className="hover:bg-teal-50/30 group align-top">
                                     <td className="p-3 pl-5">
-                                        <div className="font-semibold text-teal-700">{formatDate(meeting.date)} <span className="ml-1 align-middle text-[10px] font-bold uppercase tracking-wide bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded">{meetingKind(meeting)}</span></div>
+                                        <div className="font-semibold text-teal-700">{formatDate(meeting.date)} <span className={`ml-1 align-middle text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${KIND_STYLE[meetingKind(meeting)]}`}>{meetingKind(meeting)}</span></div>
                                         {meetingDays(meeting) > 1 && (
                                             <div className="text-xs font-semibold text-teal-600 mt-0.5">
                                                 → {meetingEndDay(meeting).split('-').reverse().join('/')} <span className="font-medium text-slate-500">({meetingDays(meeting)} ngày)</span>
@@ -51,7 +57,12 @@ const MeetingsView = ({
                                         {(() => { const c = CATEGORY_COLORS[meeting.category] || CATEGORY_COLORS['KHÁC']; return <span className={`text-[10px] font-bold uppercase tracking-wide ${c.text}`}>{meeting.category || 'KHÁC'}</span>; })()}
                                     </td>
                                     <td className="p-3 text-slate-700 whitespace-pre-wrap">{meeting.content}</td>
-                                    <td className="p-3 text-slate-600 whitespace-pre-wrap">{meeting.notes || '-'}</td>
+                                    <td className="p-3 text-slate-600 whitespace-pre-wrap">
+                                        {meeting.notes || (Object.keys(meeting.dayNotes || {}).length ? '' : '-')}
+                                        {Object.entries(meeting.dayNotes || {}).sort(([a], [b]) => a.localeCompare(b)).map(([d, t]) => (
+                                            <div key={d} className="mt-1"><span className="font-semibold text-teal-700">{d.split('-').reverse().slice(0, 2).join('/')}:</span> {t}</div>
+                                        ))}
+                                    </td>
                                     <td className="p-3 text-center">
                                         <div className="flex justify-center gap-1">
                                             <button onClick={() => setMeetingModalConfig({ isOpen: true, data: meeting })} className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-100 rounded"><IconEdit className="w-4 h-4"/></button>

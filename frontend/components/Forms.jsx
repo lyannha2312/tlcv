@@ -313,7 +313,9 @@ export const MeetingForm = ({ initialData, onClose, saveMeeting }) => {
         e.preventDefault();
         if (!form.content) return;
         const endDate = form.endDate && form.endDate > form.date.slice(0, 10) ? form.endDate : '';
-        saveMeeting({ ...form, endDate, date: new Date(form.date).toISOString() }, initialData?.id);
+        const dayNotes = {};
+        if (endDate) getDateRange(form.date.slice(0, 10), endDate).forEach(d => { const t = (form.dayNotes?.[d] || '').trim(); if (t) dayNotes[d] = t; });
+        saveMeeting({ ...form, endDate, dayNotes, date: new Date(form.date).toISOString() }, initialData?.id);
         onClose();
     };
 
@@ -333,6 +335,17 @@ export const MeetingForm = ({ initialData, onClose, saveMeeting }) => {
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Loại</label><select value={form.kind || 'Họp'} onChange={e=>setForm({...form, kind: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500">{MEETING_KINDS.map(k => <option key={k} value={k}>{k}</option>)}</select></div>
             </div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung cuộc họp <span className="text-rose-500">*</span></label><textarea required rows="3" value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500"></textarea></div>
+            {form.endDate && form.endDate > form.date.slice(0, 10) && (
+                <div className="border border-teal-200 bg-teal-50/40 rounded-lg p-3 space-y-2">
+                    <div className="text-sm font-medium text-slate-700">Ghi chú theo từng ngày <span className="text-slate-400 font-normal">(hiện ở Sổ Kế Hoạch Công Tác đúng ngày đó)</span></div>
+                    {getDateRange(form.date.slice(0, 10), form.endDate).slice(0, 31).map((d, i) => (
+                        <div key={d} className="flex items-start gap-2">
+                            <span className="shrink-0 w-24 pt-2 text-xs font-semibold text-teal-700">Ngày {i + 1} ({d.split('-').reverse().slice(0, 2).join('/')})</span>
+                            <textarea rows="2" value={form.dayNotes?.[d] || ''} onChange={e=>setForm({...form, dayNotes: { ...form.dayNotes, [d]: e.target.value }})} className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-teal-500"></textarea>
+                        </div>
+                    ))}
+                </div>
+            )}
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Ghi chú / Kết luận</label><textarea rows="3" value={form.notes} onChange={e=>setForm({...form, notes: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-teal-500"></textarea></div>
             <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button><button type="submit" className="px-5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium shadow-md">Lưu Cuộc Họp</button></div>
         </form>
