@@ -96,6 +96,9 @@ const WorkspaceView = ({
                                 const completedTasks = dossier.tasks.filter(t => t.isCompleted).length;
                                 const totalTasks = dossier.tasks.length;
                                 const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+                                // Cập nhật tiến độ gần nhất (theo ngày ghi trên mốc, rồi theo lúc nhập) để biết hồ sơ đang ở bước nào.
+                                const latestProgress = (dossier.relatedDocs || []).filter(d => d.type === 'progress' && d.content)
+                                    .sort((x, y) => ((y.date || (y.addedAt || '').slice(0, 10)).localeCompare(x.date || (x.addedAt || '').slice(0, 10))) || (new Date(y.addedAt) - new Date(x.addedAt)))[0];
 
                                 return (
                                     <div key={dossier.id} onClick={() => setActiveDossierId(dossier.id)} className="bg-white border border-slate-200 hover:border-brand-300 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md group flex flex-col h-full relative overflow-hidden">
@@ -120,6 +123,12 @@ const WorkspaceView = ({
                                             <p className="text-xs text-slate-500 line-clamp-1 mb-2.5" title={dossier.originalDoc.summary || dossier.originalDoc.content}>
                                                 {dossier.originalDoc.summary || dossier.originalDoc.content}
                                             </p>
+                                        )}
+                                        {latestProgress && (
+                                            <div className="mb-2.5 bg-amber-50/70 border border-amber-200 rounded-lg px-2.5 py-1.5" title={latestProgress.content}>
+                                                <div className="text-[10px] font-semibold text-amber-700 mb-0.5">Tiến độ gần nhất · {(latestProgress.date || (latestProgress.addedAt || '').slice(0, 10)).split('-').reverse().join('/')}</div>
+                                                <p className="text-xs text-slate-700 line-clamp-2 whitespace-pre-line">{latestProgress.content}</p>
+                                            </div>
                                         )}
                                         <div className="mt-auto pt-2.5 border-t border-slate-100">
                                             <div className="flex justify-between text-xs font-semibold text-slate-500 mb-1"><span>Task: {completedTasks}/{totalTasks}</span><span className={progress === 100 ? 'text-emerald-600' : 'text-brand-600'}>{progress}%</span></div>
