@@ -96,8 +96,8 @@ const WorkspaceView = ({
                                 const completedTasks = dossier.tasks.filter(t => t.isCompleted).length;
                                 const totalTasks = dossier.tasks.length;
                                 const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
-                                // Cập nhật tiến độ gần nhất (theo ngày ghi trên mốc, rồi theo lúc nhập) để biết hồ sơ đang ở bước nào.
-                                const latestProgress = (dossier.relatedDocs || []).filter(d => d.type === 'progress' && d.content)
+                                // Cập nhật gần nhất (tiến độ hoặc văn bản đính kèm/kết quả; theo ngày ghi trên mốc, rồi theo lúc nhập) để biết hồ sơ đang ở bước nào.
+                                const latestProgress = (dossier.relatedDocs || []).filter(d => d.content || d.number)
                                     .sort((x, y) => ((y.date || (y.addedAt || '').slice(0, 10)).localeCompare(x.date || (x.addedAt || '').slice(0, 10))) || (new Date(y.addedAt) - new Date(x.addedAt)))[0];
 
                                 return (
@@ -112,11 +112,18 @@ const WorkspaceView = ({
                                             </div>
                                         </div>
                                         <h3 className="font-semibold text-slate-800 group-hover:text-brand-600 transition-colors mb-1.5 text-sm leading-snug line-clamp-2" title={dossier.title}>{dossier.title}</h3>
-                                        {dossier.originalDoc?.number && (
-                                            <div className="mb-1.5">
-                                                <span className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1 w-max">
-                                                    <IconFileText className="w-3 h-3 shrink-0 text-slate-400"/> {dossier.originalDoc.number}
-                                                </span>
+                                        {(dossier.originalDoc?.number || dossier.originalDoc?.date) && (
+                                            <div className="mb-1.5 flex flex-wrap gap-1.5">
+                                                {dossier.originalDoc.number && (
+                                                    <span className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1 w-max">
+                                                        <IconFileText className="w-3 h-3 shrink-0 text-slate-400"/> {dossier.originalDoc.number}
+                                                    </span>
+                                                )}
+                                                {dossier.originalDoc.date && (
+                                                    <span className="text-[11px] font-medium text-slate-600 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded w-max">
+                                                        {dossier.originalDoc.date.split('-').reverse().join('/')}
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                         {(dossier.originalDoc?.summary || dossier.originalDoc?.content) && (
@@ -125,9 +132,9 @@ const WorkspaceView = ({
                                             </p>
                                         )}
                                         {latestProgress && (
-                                            <div className="mb-2.5 bg-amber-50/70 border border-amber-200 rounded-lg px-2.5 py-1.5" title={latestProgress.content}>
-                                                <div className="text-[10px] font-semibold text-amber-700 mb-0.5">Tiến độ gần nhất · {(latestProgress.date || (latestProgress.addedAt || '').slice(0, 10)).split('-').reverse().join('/')}</div>
-                                                <p className="text-xs text-slate-700 line-clamp-2 whitespace-pre-line">{latestProgress.content}</p>
+                                            <div className="mb-2.5 bg-amber-50/70 border border-amber-200 rounded-lg px-2.5 py-1.5" title={latestProgress.content || latestProgress.number}>
+                                                <div className="text-[10px] font-semibold text-amber-700 mb-0.5">Cập nhật gần nhất · {(latestProgress.date || (latestProgress.addedAt || '').slice(0, 10)).split('-').reverse().join('/')}{latestProgress.type !== 'progress' && ` · ${latestProgress.docType || 'Văn bản'}${latestProgress.number ? `: ${latestProgress.number}` : ''}`}</div>
+                                                <p className="text-xs text-slate-700 line-clamp-2 whitespace-pre-line">{latestProgress.content || latestProgress.number}</p>
                                             </div>
                                         )}
                                         <div className="mt-auto pt-2.5 border-t border-slate-100">
