@@ -30,6 +30,8 @@ import { initGoogleAuth, loginAndSync, uploadToDrive, downloadFromDrive } from '
 import { detectBackend, loadServerData, loadDossiers, saveCollection } from './serverSync.js';
 import { APP_PASSWORD } from './security.js';
 import { DOC_TYPE_CONSULT, CONSULT_LABEL } from './fileMatch.js';
+import DriveCompareModal from './components/DriveCompareModal.jsx';
+import { compareData, mergeData, lastEdit, getMachineName, contentKey } from './driveCompare.js';
 
 // Mỗi mục một tông màu: chữ và icon cùng tông; `on` là khi đang chọn, `off` là khi chưa chọn (viết đủ tên class để Tailwind nhận ra).
 const NAV_ITEMS = [
@@ -137,6 +139,7 @@ const App = () => {
     const [meetingModalConfig, setMeetingModalConfig] = useState({ isOpen: false, data: null });
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+    const [driveCompare, setDriveCompare] = useState(null); // hộp thoại so sánh khi lưu lên / tải từ Drive
 
     // Nơi lưu dữ liệu: null = đang kiểm tra, true = Flask (dossiers.json + data.json), false = localStorage của trình duyệt.
     // Khi dùng Flask, localStorage không được ghi nữa nên bản cũ trong trình duyệt còn nguyên làm dự phòng.
@@ -151,12 +154,37 @@ const App = () => {
     useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_schedules_v4', JSON.stringify(schedules)); }, [schedules, serverMode]);
     useEffect(() => { if (serverMode !== true) localStorage.setItem('hoso_data_light_meetings_v4', JSON.stringify(meetings)); }, [meetings, serverMode]);
 
+    // Gắn giờ sửa (updatedAt) cho bản ghi nào vừa bị người dùng sửa, để so sánh giữa các máy biết bên nào sửa sau.
+    // Nạp dữ liệu (máy chủ, Drive, phục hồi...) không phải là "sửa" nên gọi rebaseline() trước khi đặt dữ liệu mới vào.
+    const stampSnapshotRef = useRef({});
+    const baselineRef = useRef(false);
+    const rebaseline = () => { baselineRef.current = true; setTimeout(() => { baselineRef.current = false; }, 1500); };
+    useEffect(() => {
+        const state = { dossiers, supportLogs, coordLogs, schedules, meetings };
+        const setters = { dossiers: setDossiers, supportLogs: setSupportLogs, coordLogs: setCoordLogs, schedules: setSchedules, meetings: setMeetings };
+        const snap = stampSnapshotRef.current;
+        const skip = baselineRef.current || Object.keys(snap).length === 0;
+        baselineRef.current = false;
+        Object.entries(state).forEach(([name, items]) => {
+            const next = new Map(items.filter(x => x && x.id).map(x => [x.id, contentKey(x)]));
+            if (!skip && snap[name]) {
+                const changed = new Set(items.filter(x => x && x.id && snap[name].has(x.id) && snap[name].get(x.id) !== next.get(x.id)).map(x => x.id));
+                if (changed.size) {
+                    const now = new Date().toISOString();
+                    setters[name](cur => cur.map(x => (x && changed.has(x.id) ? { ...x, updatedAt: now } : x)));
+                }
+            }
+            snap[name] = next;
+        });
+    }, [dossiers, supportLogs, coordLogs, schedules, meetings]);
+
     // Khi chạy dưới Flask: nạp dữ liệu từ máy chủ một lần lúc mở trang.
     useEffect(() => {
         (async () => {
             if (!(await detectBackend())) { setServerMode(false); return; }
             try {
                 const s = await loadServerData();
+                rebaseline();
                 // Máy chủ còn trống mà trình duyệt có dữ liệu: lấy dữ liệu trình duyệt làm bản khởi tạo (sẽ được ghi lên máy chủ).
                 const pick = (name, local) => (s[name].length === 0 && local.length > 0 ? local : s[name]);
                 lastSyncedRef.current = Object.fromEntries(Object.keys(s).map(k => [k, JSON.stringify(s[k])]));
@@ -192,6 +220,7 @@ const App = () => {
                         try {
                             const fresh = await loadDossiers();
                             lastSyncedRef.current.dossiers = JSON.stringify(fresh);
+                            rebaseline();
                             setDossiers(fresh);
                         } catch (reloadError) { /* giữ nguyên, người dùng tải lại trang */ }
                         alert(`Không lưu được thay đổi hồ sơ:\n${e.message}\n\nHồ sơ đã được trả về như cũ.`);
@@ -384,6 +413,7 @@ const App = () => {
     // Gộp bản sao lưu vào dữ liệu hiện có theo id thay vì ghi đè — mục chưa có trong bản sao lưu vẫn được giữ lại.
     // Trả về thống kê cho danh sách hồ sơ.
     const mergeBackupData = (data) => {
+        rebaseline();
         const d = mergeById(dossiers, data.dossiers, ['relatedDocs', 'tasks']);
         if (data.dossiers) setDossiers(d.items);
         // Hỗ trợ, Phối hợp, Cuộc họp hiển thị theo thứ tự lưu (mới nhất ở đầu) nên mục mới phải chèn lên đầu.
@@ -397,56 +427,78 @@ const App = () => {
         return { ...d, supportAdded: sp.added, supportInBackup: incomingSupport ? incomingSupport.length : 0 };
     };
 
+    // --- Đồng bộ Google Drive: luôn so sánh hai bên trước khi ghi, để lưu từ nhiều máy không làm mất dữ liệu ---
+    const localLists = () => ({ dossiers, supportLogs, coordLogs, schedules, meetings });
+    // Nhóm nào bản trên Drive không có thì coi như giống máy này (không so sánh, không thay thế).
+    const remoteLists = (data, local) => ({
+        dossiers: Array.isArray(data.dossiers) ? data.dossiers : local.dossiers,
+        supportLogs: collectSupportLogs(data) || local.supportLogs,
+        coordLogs: Array.isArray(data.coordLogs) ? data.coordLogs : local.coordLogs,
+        schedules: Array.isArray(data.schedules) ? data.schedules : local.schedules,
+        meetings: Array.isArray(data.meetings) ? data.meetings : local.meetings,
+    });
+    const applyLists = (lists) => {
+        rebaseline();
+        setDossiers(lists.dossiers); setSupportLogs(lists.supportLogs); setCoordLogs(lists.coordLogs);
+        setSchedules(lists.schedules); setMeetings(lists.meetings);
+        setActiveDossierId(cur => (lists.dossiers.some(d => d.id === cur) ? cur : null));
+    };
+    const readLocalName = () => { try { return localStorage.getItem('tlcv_ten_may') || ''; } catch (e) { return ''; } };
+    const driveMeta = (remote, rs, local) => ({
+        remoteSavedAt: remote.data.savedAt || null, remoteSavedBy: remote.data.savedBy || '', remoteModified: remote.modifiedTime,
+        remoteEdit: lastEdit(rs), localEdit: lastEdit(local), localName: readLocalName(),
+    });
+    const uploadLists = async (lists, label) => {
+        await uploadToDrive({ ...lists, version: 2, savedAt: new Date().toISOString(), savedBy: getMachineName() });
+        showToast(label || '✅ Đã lưu dữ liệu lên Google Drive!');
+    };
+    const withDriveBusy = async (job) => {
+        setIsDriveSyncing(true);
+        try { await job(); } catch (e) { showToast('Lỗi: ' + e.message); } finally { setIsDriveSyncing(false); }
+    };
+
     const handleDriveUpload = () => {
-        loginAndSync(async () => {
-            setIsDriveSyncing(true);
-            try {
-                const payload = { dossiers, supportLogs, coordLogs, schedules, meetings, version: 2 };
-                await uploadToDrive(payload);
-                showToast('✅ Đã lưu dữ liệu lên Google Drive!');
-            } catch(e) {
-                showToast('Lỗi: ' + e.message);
-            } finally {
-                setIsDriveSyncing(false);
-            }
-        });
+        loginAndSync(() => withDriveBusy(async () => {
+            const local = localLists();
+            getMachineName(); // hỏi tên máy một lần để ghi vào file trên Drive
+            const remote = await downloadFromDrive();
+            if (!remote) { await uploadLists(local); return; }
+            const rs = remoteLists(remote.data, local);
+            const result = compareData(local, rs);
+            // Máy này đã có đủ những gì Drive có (không mục nào chỉ có trên Drive, không mục nào khác nội dung): ghi luôn.
+            if (!result.some(c => c.onlyRemote.length || c.diff.length)) { await uploadLists(local); return; }
+            setDriveCompare({
+                mode: 'upload', result, meta: driveMeta(remote, rs, local),
+                onMerge: (choices) => withDriveBusy(async () => {
+                    const merged = mergeData(local, rs, choices);
+                    applyLists(merged);
+                    await uploadLists(merged, '✅ Đã gộp hai bên và lưu lên Google Drive!');
+                }),
+                onOverwrite: () => withDriveBusy(() => uploadLists(local, '✅ Đã ghi đè bản trên Drive bằng dữ liệu máy này.')),
+            });
+        }));
     };
 
     const handleDriveDownload = () => {
-        loginAndSync(async () => {
-            setIsDriveSyncing(true);
-            try {
-                const data = await downloadFromDrive();
-                if (data) {
-                    // Hồ sơ có ở máy này mà không còn trong bản trên Drive (vd. đã xóa ở máy khác): gộp theo id sẽ giữ lại, nên hỏi lại có xóa không.
-                    const driveIds = new Set(Array.isArray(data.dossiers) ? data.dossiers.map(x => x && x.id) : []);
-                    const missing = driveIds.size ? dossiers.filter(d => !driveIds.has(d.id)) : [];
-                    const r = mergeBackupData(data);
-                    showToast(`✅ Đã gộp dữ liệu từ Google Drive — Hồ sơ: thêm ${r.added}, cập nhật ${r.updated}${missing.length ? `, chỉ có ở máy này ${missing.length}` : ''}. Hỗ trợ: thêm ${r.supportAdded} (Drive có ${r.supportInBackup}).`);
-                    if (missing.length) {
-                        const shown = missing.slice(0, 8).map(d => `• ${d.title}`).join('\n');
-                        const more = missing.length > 8 ? `\n… và ${missing.length - 8} hồ sơ khác` : '';
-                        setConfirmDialog({
-                            isOpen: true,
-                            title: 'Xóa hồ sơ không còn trên Drive?',
-                            message: `Máy này có ${missing.length} hồ sơ không có trong bản trên Drive (có thể đã xóa ở máy khác):\n${shown}${more}\n\nChọn Hủy để giữ lại. Thư mục tài liệu không bị xóa.`,
-                            onConfirm: () => {
-                                const ids = new Set(missing.map(d => d.id));
-                                setDossiers(prev => prev.filter(d => !ids.has(d.id)));
-                                setActiveDossierId(cur => (ids.has(cur) ? null : cur));
-                                showToast(`Đã xóa ${ids.size} hồ sơ không còn trên Drive.`);
-                            },
-                        });
-                    }
-                } else {
-                    showToast('Không tìm thấy bản sao lưu nào trên Drive.');
-                }
-            } catch(e) {
-                showToast('Lỗi: ' + e.message);
-            } finally {
-                setIsDriveSyncing(false);
+        loginAndSync(() => withDriveBusy(async () => {
+            const local = localLists();
+            const remote = await downloadFromDrive();
+            if (!remote) { showToast('Không tìm thấy bản sao lưu nào trên Drive.'); return; }
+            const rs = remoteLists(remote.data, local);
+            const result = compareData(local, rs);
+            const added = result.reduce((n, c) => n + c.onlyRemote.length, 0);
+            // Không có gì chỉ ở máy này và không có mục nào khác nội dung: gộp thẳng, không cần hỏi.
+            if (!result.some(c => c.onlyLocal.length || c.diff.length)) {
+                if (added) applyLists(mergeData(local, rs, {}));
+                showToast(added ? `✅ Đã tải từ Google Drive — thêm ${added} mục mới.` : '✅ Máy này đã giống bản trên Drive.');
+                return;
             }
-        });
+            setDriveCompare({
+                mode: 'download', result, meta: driveMeta(remote, rs, local),
+                onMerge: (choices) => { applyLists(mergeData(local, rs, choices)); showToast('✅ Đã gộp dữ liệu từ Google Drive vào máy này.'); setDriveCompare(null); },
+                onOverwrite: () => { applyLists(rs); showToast('✅ Đã thay dữ liệu máy này bằng bản trên Drive.'); setDriveCompare(null); },
+            });
+        }));
     };
 
     const handleBackup = () => {
@@ -845,6 +897,15 @@ const App = () => {
                     </div>
                 </div>
             </Modal>
+
+            {driveCompare && (
+                <DriveCompareModal
+                    mode={driveCompare.mode} result={driveCompare.result} meta={driveCompare.meta}
+                    onClose={() => setDriveCompare(null)}
+                    onMerge={(choices) => { setDriveCompare(null); driveCompare.onMerge(choices); }}
+                    onOverwrite={() => { setDriveCompare(null); driveCompare.onOverwrite(); }}
+                />
+            )}
 
             <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Tạo Hồ Sơ Công Việc Mới">
                 <DossierForm onClose={() => setIsCreateModalOpen(false)} saveDossier={saveDossier} />

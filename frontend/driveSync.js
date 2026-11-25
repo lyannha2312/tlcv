@@ -53,7 +53,7 @@ const driveError = async (res, fallback) => {
 
 // 3. Tìm file backup cũ trên Drive
 const findBackupFile = async () => {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='QLCV_Cloud_Backup.json' and trashed=false`, {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='QLCV_Cloud_Backup.json' and trashed=false&fields=files(id,name,modifiedTime)`, {
         headers: { Authorization: `Bearer ${accessToken}` }
     });
     if (!res.ok) throw await driveError(res, 'Không tìm được file backup trên Drive');
@@ -79,12 +79,12 @@ export const uploadToDrive = async (appData) => {
     return true;
 };
 
-// 5. Tải dữ liệu từ Drive về máy
+// 5. Tải dữ liệu từ Drive về máy: { data, modifiedTime } (modifiedTime là giờ Drive ghi nhận lần lưu cuối), hoặc null nếu chưa có file.
 export const downloadFromDrive = async () => {
     if (!accessToken) throw new Error("Chưa xác thực Google");
     const file = await findBackupFile();
     if (!file) return null;
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) throw await driveError(res, 'Lỗi tải dữ liệu xuống máy');
-    return await res.json();
+    return { data: await res.json(), modifiedTime: file.modifiedTime || null };
 };
