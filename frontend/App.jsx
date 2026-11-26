@@ -30,6 +30,7 @@ import { initGoogleAuth, loginAndSync, uploadToDrive, downloadFromDrive } from '
 import { detectBackend, loadServerData, loadDossiers, saveCollection } from './serverSync.js';
 import { APP_PASSWORD } from './security.js';
 import { DOC_TYPE_CONSULT, CONSULT_LABEL } from './fileMatch.js';
+import { noteToText } from './richText.js';
 import DriveCompareModal from './components/DriveCompareModal.jsx';
 import { compareData, mergeData, lastEdit, getMachineName, contentKey } from './driveCompare.js';
 
@@ -576,7 +577,7 @@ const App = () => {
                     "Ngày phát hành": rd.date ? rd.date.split('-').reverse().join('/') : '',
                     "Đơn vị phát hành": rd.sender || '',
                     "Trích yếu": rd.content || '',
-                    "Ghi chú": rd.note || '',
+                    "Ghi chú": noteToText(rd.note),
                 });
             });
         });
@@ -863,6 +864,7 @@ const App = () => {
                             setEditDossierConfig={setEditDossierConfig}
                             setDocModalConfig={setDocModalConfig}
                             requestDeleteRelatedDoc={requestDeleteRelatedDoc}
+                            saveRelatedDoc={saveRelatedDoc}
                             updateFinalResult={updateFinalResult}
                             reopenDossier={reopenDossier}
                             exportDossierToJson={exportDossierToJson}

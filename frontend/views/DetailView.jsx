@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { formatDate, CATEGORY_COLORS, getLocalDateTimeString } from '../helpers.js';
 import DossierFiles, { useDossierFiles, useLocalFilesOptIn, FileChip, openDossierFolder, ensureDossierFolder } from '../components/DossierFiles.jsx';
 import PdfViewer from '../components/PdfViewer.jsx';
+import NoteEditorModal from '../components/NoteEditorModal.jsx';
+import { noteToText } from '../richText.js';
 import { attachFiles, STAGE_CONSULT, DOC_TYPE_CONSULT, CONSULT_LABEL, REPORTS_FOLDER, isConsultRaw, folderLabel, isWebLink } from '../fileMatch.js';
 import dangIcon from '../assets/dang-icon.png';
 import {
@@ -76,6 +78,7 @@ const DetailView = ({
     setEditDossierConfig,
     setDocModalConfig,
     requestDeleteRelatedDoc,
+    saveRelatedDoc,
     updateFinalResult,
     reopenDossier,
     exportDossierToJson,
@@ -86,6 +89,7 @@ const DetailView = ({
     const [editingResult, setEditingResult] = useState(false);
     const [resultDraft, setResultDraft] = useState('');
     const [pickedFile, setPickedFile] = useState(null);
+    const [noteEditing, setNoteEditing] = useState(null); // { docId, note, title }: đang mở cửa sổ sửa ghi chú của một mốc
     const [viewerVisible, setViewerVisible] = useState(true);
     // Trang GitHub Pages (serverMode === false) không có tài liệu; chỉ khi người dùng bật mới đọc từ Flask trên máy này.
     const [localOn, setLocalOn] = useLocalFilesOptIn();
@@ -325,8 +329,13 @@ const DetailView = ({
                                         </a>
                                     )}
                                     {evt.note && (
-                                        <div className="mt-1.5 text-xs text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100">
-                                            <span className="font-semibold">Ghi chú:</span> {evt.note}
+                                        <div className="mt-1.5 text-xs text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100 flex items-start gap-2">
+                                            <div className="min-w-0 flex-1 line-clamp-2 whitespace-pre-line break-words">
+                                                <span className="font-semibold">Ghi chú:</span> {noteToText(evt.note)}
+                                            </div>
+                                            <button type="button" onClick={() => setNoteEditing({ docId: evt.id, note: evt.note, title: `Ghi chú${evt.number ? ' · ' + evt.number : ''}` })}
+                                                title="Xem toàn bộ và sửa ghi chú"
+                                                className="shrink-0 font-semibold text-amber-800 hover:text-amber-950 underline underline-offset-2">Chi tiết ▸</button>
                                         </div>
                                     )}
                                     {(() => {
@@ -453,6 +462,15 @@ const DetailView = ({
             </aside>
         )}
             </div>
+
+            {noteEditing && (
+                <NoteEditorModal
+                    title={noteEditing.title}
+                    note={noteEditing.note}
+                    onClose={() => setNoteEditing(null)}
+                    onSave={(value) => { saveRelatedDoc(activeDossier.id, { note: value }, noteEditing.docId); setNoteEditing(null); }}
+                />
+            )}
         </div>
     );
 };

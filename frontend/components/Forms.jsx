@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CATEGORIES, MEETING_KINDS, ISSUING_UNITS, SUPPORT_TYPES, getLocalDateTimeString, getDateRange, makeFolderName, folderNameProblem } from '../helpers.js';
 import { useDossierFiles } from './DossierFiles.jsx';
+import { noteToText, isFormatted } from '../richText.js';
 import { STAGE_CONSULT, DOC_TYPE_CONSULT, CONSULT_LABEL, REPORTS_FOLDER, FOLDER_DIRECTIVE, RESULT_FOLDER, folderLabel } from '../fileMatch.js';
 
 // ---- DossierForm ----
@@ -119,7 +120,7 @@ export const AddDocForm = ({ dossierId, initialData, isArchived, onClose, saveRe
                             <div><label className="block text-sm font-medium text-slate-700 mb-1">Phân loại</label><select value={docForm.docType} onChange={e=>setDocForm({...docForm, docType: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"><option>Văn bản đính kèm</option><option>Văn bản chỉ đạo mới</option><option>Phụ lục</option><option>Văn bản kết quả</option><option value={DOC_TYPE_CONSULT}>{CONSULT_LABEL}</option></select></div>
                         </div>
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">Nội dung / Trích yếu</label><textarea rows="2" value={docForm.content} onChange={e=>setDocForm({...docForm, content: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
-                        <div><label className="block text-sm font-medium text-amber-600 mb-1">Ghi chú (Mục đích)</label><textarea rows="2" value={docForm.note} onChange={e=>setDocForm({...docForm, note: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500"></textarea></div>
+                        <div><label className="block text-sm font-medium text-amber-600 mb-1">Ghi chú (Mục đích)</label><textarea rows="2" value={isFormatted(docForm.note) ? noteToText(docForm.note) : docForm.note} readOnly={isFormatted(docForm.note)} onChange={e=>setDocForm({...docForm, note: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500 read-only:bg-slate-50 read-only:text-slate-500"></textarea>{isFormatted(docForm.note) && <p className="text-xs text-slate-400 mt-1">Ghi chú này có định dạng nên sửa bằng nút "Chi tiết" ở mục trên nhật ký xử lý.</p>}</div>
                         {storedFiles.categories && (
                             <div><label className="block text-sm font-medium text-slate-700 mb-1">File trong kho hồ sơ <span className="text-xs font-normal text-slate-400">(để xem ngay ở mốc này trên timeline)</span></label>
                                 <select value={docForm.fileName} onChange={e=>setDocForm({...docForm, fileName: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:ring-1 focus:ring-emerald-500 text-sm">

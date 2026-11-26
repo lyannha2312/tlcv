@@ -1,6 +1,7 @@
 import React from 'react';
 import { getDayName, getMonday, getSupportType, meetingCoversDay, meetingKind, meetingDays, meetingDayIndex } from '../helpers.js';
 import { DOC_TYPE_CONSULT, CONSULT_LABEL } from '../fileMatch.js';
+import { noteToText } from '../richText.js';
 import {
     IconCalendar, IconPlus, IconEdit, IconTrash,
     IconChevronLeft, IconChevronRight, IconExternalLink,
@@ -77,7 +78,7 @@ const PlannerView = ({
                     if (day === dateStr && day !== closeDay) {
                         let u = `${rd.docType === DOC_TYPE_CONSULT ? CONSULT_LABEL : 'Văn bản kết quả'}: ${rd.number || '(chưa có số)'}`;
                         if (rd.content) u += ` - ${rd.content}`;
-                        if (rd.note) u += ` (Ghi chú: ${rd.note})`;
+                        if (rd.note) u += ` (Ghi chú: ${noteToText(rd.note)})`;
                         updates.push(u);
                     }
                 } else if (rd.type === 'document' && rd.docType === 'Văn bản chỉ đạo mới') {
@@ -86,7 +87,7 @@ const PlannerView = ({
                         let u = `Văn bản chỉ đạo mới: ${rd.number || '(chưa có số)'}`;
                         if (rd.date) u += ` (ban hành ${fmtDate(rd.date)})`;
                         if (rd.content) u += ` - ${rd.content}`;
-                        if (rd.note) u += ` (Ghi chú: ${rd.note})`;
+                        if (rd.note) u += ` (Ghi chú: ${noteToText(rd.note)})`;
                         updates.push(u);
                     }
                 }
